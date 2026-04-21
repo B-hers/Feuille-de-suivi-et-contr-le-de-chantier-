@@ -267,18 +267,9 @@ const DC_SECTIONS = [
       { title: "Finition", items: ["Bouts de rail coupés à 5 cm de la clame de fin (ni plus ni moins)", "Bouchons de rails posés"] },
       { title: "Interdits ❌", items: ["Aucun tirefond sur ardoise — joint en plomb obligatoire", "Morceaux de rails non lancés depuis la toiture", "Bouts de rails non abandonnés sous les panneaux"] },
     ],
-    items: [
-      { key: "structuresConformes", label: "Structures conformes (crochets, rails, planitude, fixations)" },
-      { key: "etancheiteStructures", label: "Étanchéité des crochets / pénétrations toiture OK" },
-    ],
-    numericFields: [
-      { key: "nbCrochets", label: "Nombre de crochets posés", placeholder: "ex: 42" },
-      { key: "nbRails", label: "Nombre de rails posés", placeholder: "ex: 8" },
-    ],
     photoCats: [
-      { key: "structures_general", label: "Vue générale structures sans panneaux" },
-      { key: "crochets_detail", label: "Détail crochets (espacement + vis)" },
-      { key: "rails_detail", label: "Détail rails (planitude + fixations)" },
+      { key: "structures_general", label: "Vue générale structures (sans panneaux)" },
+      { key: "structures_detail", label: "Détails crochets & rails (espacement, vis, planitude)" },
     ]
   },
   {
@@ -289,15 +280,10 @@ const DC_SECTIONS = [
       { title: "Tubage", items: ["Forage effectué de l'extérieur vers l'intérieur", "Boucle réalisée à l'entrée dans la maison (écoulement des eaux)"] },
       { title: "Interdits ❌", items: ["Aucun câble ne pend sous les PV", "Aucun contact câble-toiture ou câble-crochet", "Aucun câble enroulé autour des rails"] },
     ],
-    items: [
-      { key: "cablageConformes", label: "Câblage DC conforme (colsonnage, protection, terre)" },
-      { key: "mc4OK", label: "Connexions MC4 serrées et verrouillées" },
-      { key: "etancheitePercements", label: "Étanchéité de tous les percements vérifiée" },
-      { key: "tubageOK", label: "Tubage conforme (boucle d'entrée maison, étanchéité)" },
-    ],
     photoCats: [
       { key: "cablage_sous_pv", label: "Câblage DC sous les panneaux (colsonnage)" },
       { key: "chemin_cables", label: "Chemin de câbles — tubage — entrée maison" },
+      { key: "arrivee_cables_dc", label: "Arrivée des câbles DC (onduleur / local technique)" },
     ]
   },
   {
@@ -306,13 +292,8 @@ const DC_SECTIONS = [
       { title: "Placement & fixation", items: ["Bonnes clames de milieu et de fin utilisées", "Alignement des PV vérifié (rapport à la toiture)", "Câbles PV colsonnés (ne pendent pas)"] },
       { title: "Interdits ❌", items: ["Personne n'a marché sur les PV", "PV non griffés lors de la manipulation", "Clames de milieu non utilisées comme clames de fin"] },
     ],
-    items: [
-      { key: "pvConformes", label: "PV correctement placés, fixés et alignés" },
-      { key: "clamesOK", label: "Clames de milieu et de fin correctes" },
-    ],
     numericFields: [
       { key: "nbPV", label: "Nombre de PV posés", placeholder: "ex: 24" },
-      { key: "puissanceDC", label: "Puissance totale DC (kWc)", placeholder: "ex: 12.48" },
     ],
     photoCats: [
       { key: "vue_generale_pv", label: "Vue générale toiture terminée (panneaux posés)" },
@@ -345,51 +326,87 @@ const DC_SECTIONS = [
   },
 ];
 
-// ── Checklists AC ─────────────────────────────────────
+// ── Checklists AC (restructuré) ────────────────────────────────────────────
 const AC_SECTIONS = [
-  { key: "preChantierAC", label: "1 · Pré-chantier AC", icon: "🔍", items: [
-    { key: "feuilleVerifieeAC", label: "Feuille de chantier vérifiée (partie AC)" },
-    { key: "materielCharge", label: "Matériel électrique chargé et complet" },
-  ]},
-  { key: "verificationDC", label: "2 · Vérification DC reçu", icon: "🔌", items: [
-    { key: "stringsIdentifies", label: "Strings identifiés et numérotés" },
-    { key: "mc4SerresAC", label: "MC4 tous bien serrés" },
-    { key: "cablesDCAmenes", label: "Câbles DC correctement amenés à l'emplacement onduleur" },
-    { key: "stringsSchemaAC", label: "Strings vérifiés avec le schéma unifilaire" },
-  ]},
-  { key: "cablageAC", label: "4 · Câblage AC", icon: "⚡", items: [
-    { key: "sectionAdaptee", label: "Section de câble AC adaptée (conforme au schéma)" },
-    { key: "cablePE", label: "Câble de protection (PE) posé" },
-    { key: "disjoncteurAC", label: "Disjoncteur AC de protection posé" },
-    { key: "parafoudre", label: "Parafoudre posé si requis" },
-    { key: "cableTube", label: "Câble AC correctement tubé / chemin de câble" },
-  ], numericFields: [{ key: "ampDisjAC", label: "Valeur disjoncteur AC (A)", placeholder: "ex: 16" }]},
-  { key: "tableau", label: "5 · Tableau électrique (TGBT/TD)", icon: "🔋", items: [
-    { key: "disjoncteurDedie", label: "Disjoncteur dédié PV installé dans le tableau" },
-    { key: "etiquetage", label: "Étiquetage clair (circuit PV identifié)" },
-    { key: "schemaJour", label: "Schéma électrique à jour / conforme" },
-    { key: "differentielVerifie", label: "Différentiel vérifié" },
-    { key: "risqueSurchauffe", label: "Pas de risque de surchauffe (espace autour onduleur, manuels pas au-dessus)" },
-  ]},
-  { key: "miseEnService", label: "6 · Mise en service", icon: "🚀", items: [
-    { key: "testProduction", label: "Test de production réalisé" },
-    { key: "puissanceVerifiee", label: "Puissance de départ vérifiée (cohérente avec le nombre de PV)" },
-    { key: "monitoringApp", label: "Monitoring / app client configurée (si applicable)" },
-    { key: "clientInforme", label: "Client informé du fonctionnement" },
-  ], numericFields: [{ key: "puissanceDemarrage", label: "Puissance relevée au démarrage", placeholder: "ex: 4200 W" }],
-     timeFields: [{ key: "heureMiseEnService", label: "Heure de mise en service" }]},
-  { key: "clotureAC", label: "7 · Clôture chantier AC", icon: "🔒", items: [
-    { key: "materielRecupereAC", label: "Tout le matériel et outils récupérés" },
-    { key: "accessoiresLaisses", label: "Accessoires, manuels, notices laissés sur place (PAS au-dessus de l'onduleur)" },
-    { key: "nettoyageAC", label: "Nettoyage effectué (câbles, colsons, poussières onduleur, plastiques, cigarettes)" },
-    { key: "materielRetourne", label: "Matériel électrique non utilisé retourné au dépôt (disjoncteur, diff…)" },
-    { key: "gestionnairePrevenu", label: "Gestionnaire de stock / ingénieur électrique prévenus si matériel non utilisé" },
-  ]},
+  // preChantierAC supprimé
+  {
+    key: "cablage_ac", label: "1 · Câblage AC", icon: "⚡",
+    items: [
+      { key: "sectionAdaptee", label: "Section de câble AC adaptée (conforme au schéma)" },
+      { key: "cablePE", label: "Câble de protection (PE) posé" },
+      { key: "disjoncteurAC", label: "Disjoncteur AC de protection posé" },
+      { key: "parafoudre", label: "Parafoudre posé si requis" },
+      { key: "cableTube", label: "Câble AC correctement tubé / chemin de câble" },
+    ],
+    numericFields: [{ key: "ampDisjAC", label: "Valeur disjoncteur AC (A)", placeholder: "ex: 16" }],
+    photoCats: [
+      { key: "cablage_ac_ph", label: "Câblage AC (chemin de câble, section, connexions)" },
+      { key: "tgbt_avant", label: "Tableau TGBT (AVANT travaux)", hiRes: true },
+      { key: "tgbt_apres", label: "Tableau TGBT (APRÈS travaux)", hiRes: true },
+    ],
+    hasRemarks: true,
+  },
+  {
+    key: "mesureTerre", label: "2 · Mesure de terre", icon: "🌍",
+    items: [
+      { key: "mesureTerreOK", label: "Mesure de terre conforme" },
+    ],
+    photoCats: [
+      { key: "mesure_terre_ph", label: "Photo de la mesure de terre" },
+    ],
+  },
+  {
+    key: "tableau", label: "3 · Tableau électrique (TGBT/TD)", icon: "🔋",
+    items: [
+      { key: "disjoncteurDedie", label: "Disjoncteur dédié PV installé dans le tableau" },
+      { key: "etiquetage", label: "Étiquetage clair (circuit PV identifié)" },
+      { key: "schemaJour", label: "Schéma électrique à jour / conforme" },
+      { key: "differentielVerifie", label: "Différentiel vérifié" },
+      { key: "risqueSurchauffe", label: "Pas de risque de surchauffe (espace autour onduleur, manuels pas au-dessus)" },
+    ],
+    photoCats: [
+      { key: "schema_elec", label: "Schéma électrique client", hiRes: true },
+      { key: "td_ph", label: "TD si applicable", hiRes: true },
+    ],
+  },
+  {
+    key: "verificationDC", label: "4 · Vérification DC (strings)", icon: "🔌",
+    items: [
+      { key: "stringsIdentifies", label: "Strings identifiés et numérotés" },
+      { key: "stringsConnectes", label: "Schéma des strings connu et strings connectés selon ce schéma" },
+    ],
+  },
+  {
+    key: "miseEnService", label: "5 · Mise en service", icon: "🚀",
+    items: [
+      { key: "testProduction", label: "Test de production réalisé" },
+      { key: "puissanceVerifiee", label: "Puissance de départ vérifiée (cohérente avec le nombre de PV)" },
+      { key: "connexionInternet", label: "Connexion internet établie" },
+      { key: "monitoringApp", label: "Monitoring / app client configurée (si applicable)" },
+      { key: "clientInforme", label: "Client informé du fonctionnement" },
+    ],
+    numericFields: [{ key: "puissanceDemarrage", label: "Puissance relevée au démarrage", placeholder: "ex: 4200 W" }],
+    timeFields: [{ key: "heureMiseEnService", label: "Heure de mise en service" }],
+    photoCats: [
+      { key: "onduleur_ac", label: "Onduleur installé (vue générale + connexions)", hiRes: true },
+      { key: "compteur_avant", label: "Compteur électrique & disjoncteur (AVANT)", hiRes: true },
+      { key: "compteur_apres", label: "Compteur électrique & disjoncteur (APRÈS)", hiRes: true },
+    ],
+  },
+  {
+    key: "clotureAC", label: "6 · Clôture chantier AC", icon: "🔒",
+    items: [
+      { key: "materielRecupereAC", label: "Tout le matériel et outils récupérés" },
+      { key: "accessoiresLaisses", label: "Accessoires, manuels, notices laissés sur place (PAS au-dessus de l'onduleur)" },
+      { key: "nettoyageAC", label: "Nettoyage effectué (câbles, colsons, poussières onduleur, plastiques, cigarettes)" },
+      { key: "materielRetourne", label: "Matériel électrique non utilisé retourné au dépôt (disjoncteur, diff…)" },
+      // gestionnairePrevenu supprimé
+    ],
+  },
 ];
 
 // ── Onduleur items ─────────────────────────────────────
 const ONDULEUR_ITEMS = [
-  { key: "fixationOK", label: "Onduleur fixé solidement" },
   { key: "connexionsDC", label: "Connexions DC effectuées (polarité vérifiée)" },
   { key: "connexionsAC", label: "Connexions AC effectuées" },
   { key: "miseATerre", label: "Mise à la terre effectuée" },
@@ -398,20 +415,30 @@ const ONDULEUR_ITEMS = [
   { key: "monitoringOK", label: "Affichage / monitoring fonctionnel" },
 ];
 
+// ── Batterie items ───────────────────────────────────
+const BATTERIE_ITEMS = [
+  { key: "connexionsDC_bat", label: "Connexions DC effectuées (polarité vérifiée)" },
+  { key: "connexionsAC_bat", label: "Connexions AC effectuées" },
+  { key: "miseATerre_bat", label: "Mise à la terre effectuée" },
+  { key: "parametrage_bat", label: "Paramétrage batterie effectué" },
+  { key: "testDecharge", label: "Test de charge / décharge vérifié" },
+  { key: "monitoring_bat", label: "Monitoring / affichage fonctionnel" },
+];
+
+// ── Borne de recharge items ───────────────────────────
+const BORNE_ITEMS = [
+  { key: "connexionElec", label: "Connexion électrique effectuée" },
+  { key: "miseATerre_borne", label: "Mise à la terre effectuée" },
+  { key: "disjoncteurDedie_borne", label: "Disjoncteur dédié posé" },
+  { key: "parametrage_borne", label: "Paramétrage borne effectué" },
+  { key: "testCharge", label: "Test de charge vérifié (véhicule ou simulation)" },
+  { key: "monitoring_borne", label: "Monitoring / app borne fonctionnelle" },
+];
+
 // ── Photos ────────────────────────────────────────────
 // DC_PHOTO_CATS are now embedded per-section in DC_SECTIONS[].photoCats
 
-const AC_PHOTO_CATS = [
-  { key: "compteur_avant", label: "1a. Compteur & disjoncteur général (AVANT)", hiRes: true },
-  { key: "compteur_apres", label: "1b. Compteur & disjoncteur général (APRÈS)", hiRes: true },
-  { key: "tgbt_avant", label: "2a. Tableau TGBT (AVANT)", hiRes: true },
-  { key: "tgbt_apres", label: "2b. Tableau TGBT (APRÈS)", hiRes: true },
-  { key: "td_ph", label: "3. TD si applicable", hiRes: true },
-  { key: "schema_elec", label: "4. Schéma électrique client", hiRes: true },
-  { key: "onduleur_ac", label: "5. Onduleur installé (vue générale + connexions)", hiRes: true },
-  { key: "cablage_ac", label: "6. Câblage AC (chemin de câble, section)", hiRes: true },
-  { key: "extra_ac", label: "7. Photos supplémentaires AC", hiRes: true },
-];
+// AC_PHOTO_CATS sont maintenant intégrés dans chaque section AC (AC_SECTIONS[].photoCats)
 
 // ── Data factory ──────────────────────────────────────
 function makeDefaultDCItems() {
@@ -432,12 +459,23 @@ function makeDefaultACItems() {
     (s.items||[]).forEach(function(it) { d[s.key][it.key] = null; d[s.key][it.key+"Remarque"] = ""; });
     (s.numericFields||[]).forEach(function(f) { d[s.key][f.key] = ""; });
     (s.timeFields||[]).forEach(function(f) { d[s.key][f.key] = ""; });
+    if (s.hasRemarks) { d[s.key]["_remarques"] = ""; }
   });
   return d;
 }
 function makeDefaultOnduleur() {
-  var o = { marque: "", serie: "", emplacement: "" };
+  var o = { marque: "" };
   ONDULEUR_ITEMS.forEach(function(it) { o[it.key] = null; o[it.key+"Remarque"] = ""; });
+  return o;
+}
+function makeDefaultBatterie() {
+  var o = { marque: "" };
+  BATTERIE_ITEMS.forEach(function(it) { o[it.key] = null; o[it.key+"Remarque"] = ""; });
+  return o;
+}
+function makeDefaultBorne() {
+  var o = { marque: "" };
+  BORNE_ITEMS.forEach(function(it) { o[it.key] = null; o[it.key+"Remarque"] = ""; });
   return o;
 }
 function makeDefaultDCPhotos() {
@@ -449,12 +487,22 @@ function makeDefaultDCPhotos() {
   p["extra_dc"] = [];
   return p;
 }
-function makeDefaultACPhotos() { var p = {}; AC_PHOTO_CATS.forEach(function(c) { p[c.key] = []; }); return p; }
+function makeDefaultACPhotos() {
+  var p = {};
+  AC_SECTIONS.forEach(function(s) {
+    (s.photoCats||[]).forEach(function(c) { p[c.key] = []; });
+  });
+  for (var i = 0; i < 4; i++) { p["onduleur_fiche_"+i] = []; p["onduleur_install_"+i] = []; }
+  for (var i = 0; i < 4; i++) { p["batterie_fiche_"+i] = []; p["batterie_install_"+i] = []; }
+  for (var i = 0; i < 4; i++) { p["borne_fiche_"+i] = []; p["borne_install_"+i] = []; }
+  p["extra_ac"] = [];
+  return p;
+}
 function makeDefaultData() {
   return {
     meta: { ref: "", client: "", adresse: "", dateControle: "", controleur: "", equipe: "", pm: "" },
     dc: { items: makeDefaultDCItems(), photos: makeDefaultDCPhotos(), stringTensions: {}, observations: "", signatureName: "", heureFin: "" },
-    ac: { onduleurs: [makeDefaultOnduleur()], items: makeDefaultACItems(), photos: makeDefaultACPhotos(), observations: "", signatureName: "", heureFin: "" }
+    ac: { onduleurs: [makeDefaultOnduleur()], batteries: [], bornes: [], items: makeDefaultACItems(), photos: makeDefaultACPhotos(), observations: "", signatureName: "", heureFin: "" }
   };
 }
 
@@ -504,9 +552,17 @@ function calcACCompletion(data) {
   });
   ((data.ac||{}).onduleurs||[]).forEach(function(o) {
     ONDULEUR_ITEMS.forEach(function(it) {
-      total++;
-      if (o[it.key] === "OK" || o[it.key] === "NA") done++;
-      if (o[it.key] === "NOK") nokCount++;
+      total++; if (o[it.key]==="OK"||o[it.key]==="NA") done++; if (o[it.key]==="NOK") nokCount++;
+    });
+  });
+  ((data.ac||{}).batteries||[]).forEach(function(o) {
+    BATTERIE_ITEMS.forEach(function(it) {
+      total++; if (o[it.key]==="OK"||o[it.key]==="NA") done++; if (o[it.key]==="NOK") nokCount++;
+    });
+  });
+  ((data.ac||{}).bornes||[]).forEach(function(o) {
+    BORNE_ITEMS.forEach(function(it) {
+      total++; if (o[it.key]==="OK"||o[it.key]==="NA") done++; if (o[it.key]==="NOK") nokCount++;
     });
   });
   return { total: total, done: done, nokCount: nokCount, pct: total > 0 ? Math.round(done/total*100) : 0 };
@@ -527,9 +583,20 @@ function collectNOK(data) {
       if (sData[it.key] === "NOK") items.push({ tab: "AC", section: s.label, label: it.label, remark: sData[it.key+"Remarque"]||"" });
     });
   });
+
   ((data.ac||{}).onduleurs||[]).forEach(function(o, i) {
     ONDULEUR_ITEMS.forEach(function(it) {
-      if (o[it.key] === "NOK") items.push({ tab: "AC", section: "Onduleur "+(i+1), label: it.label, remark: o[it.key+"Remarque"]||"" });
+      if (o[it.key]==="NOK") items.push({ tab:"AC", section:"Onduleur "+(i+1), label:it.label, remark:o[it.key+"Remarque"]||"" });
+    });
+  });
+  ((data.ac||{}).batteries||[]).forEach(function(o, i) {
+    BATTERIE_ITEMS.forEach(function(it) {
+      if (o[it.key]==="NOK") items.push({ tab:"AC", section:"Batterie "+(i+1), label:it.label, remark:o[it.key+"Remarque"]||"" });
+    });
+  });
+  ((data.ac||{}).bornes||[]).forEach(function(o, i) {
+    BORNE_ITEMS.forEach(function(it) {
+      if (o[it.key]==="NOK") items.push({ tab:"AC", section:"Borne "+(i+1), label:it.label, remark:o[it.key+"Remarque"]||"" });
     });
   });
   return items;
@@ -1618,43 +1685,81 @@ function SignatureBlock({ title, name, heureFin, onName, onHeure, color }) {
 }
 
 // ── OnduleurCard ──────────────────────────────────────
-function OnduleurCard({ index, onduleur, onChange, onRemove, canRemove }) {
-  function set(key, val) { onChange(Object.assign({}, onduleur, { [key]: val })); }
+function OnduleurCard({ index, item, onChange, onRemove, canRemove, photos, setPhotos }) {
+  function set(key, val) { onChange(Object.assign({}, item, { [key]: val })); }
+  var ficheKey = "onduleur_fiche_"+index;
+  var installKey = "onduleur_install_"+index;
+  var allSections = [{ key: ficheKey, label: "Fiche "+(index+1) }, { key: installKey, label: "Installation "+(index+1) }];
   return (
-    <div style={{ background: WHITE, border: "1.5px solid "+AC_BORDER, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+    <div style={{ background: WHITE, border: "1.5px solid "+"#f1948a", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <span style={{ fontWeight: 700, color: AC_COLOR, fontSize: 14 }}>🔆 Onduleur {index+1}</span>
+        <span style={{ fontWeight: 700, color: "#e74c3c", fontSize: 14 }}>🔆 Onduleur {index+1}</span>
         {canRemove && (
-          <button onClick={function(){ if(window.confirm("Supprimer l\'onduleur "+(index+1)+" ?")) onRemove(); }}
-            style={{ background: "#fdecea", border: "1px solid "+AC_BORDER, color: AC_COLOR, borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", minHeight: 0 }}>
+          <button onClick={function(){ if(window.confirm("Supprimer onduleur "+(index+1)+" ?")) onRemove(); }}
+            style={{ background: "#fdecea", border: "1px solid "+"#f1948a", color: "#e74c3c", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", minHeight: 0 }}>
             🗑 Supprimer
           </button>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginBottom: 14 }}>
-        <div>
-          <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 4, display: "block" }}>Marque & modèle</label>
-          <input type="text" value={onduleur.marque||""} onChange={function(e){ set("marque",e.target.value); }} placeholder="ex: Fronius Primo 6.0" />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 4, display: "block" }}>N° de série</label>
-          <input type="text" value={onduleur.serie||""} onChange={function(e){ set("serie",e.target.value); }} placeholder="Numéro de série" />
-        </div>
-        <div>
-          <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 4, display: "block" }}>Emplacement</label>
-          <input type="text" value={onduleur.emplacement||""} onChange={function(e){ set("emplacement",e.target.value); }} placeholder="ex: garage, façade" />
-        </div>
+
+      {/* Modèle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={LBL}>Marque & modèle</label>
+        <input type="text" value={item.marque||""} onChange={function(e){ set("marque",e.target.value); }} placeholder="ex: Fronius Primo 6.0" />
       </div>
-      {ONDULEUR_ITEMS.map(function(it) {
-        return (
-          <CheckItem key={it.key} label={it.label}
-            value={onduleur[it.key]} remark={onduleur[it.key+"Remarque"]}
-            onChange={function(v){ set(it.key, v); }} onRemarkChange={function(v){ set(it.key+"Remarque", v); }} />
-        );
-      })}
+
+      {/* Fiche signalétique */}
+      {photos && setPhotos && (
+        <div style={{ marginBottom: 14 }}>
+          <PhotoZone catKey={ficheKey} label="📋 Fiche signalétique"
+            items={photos[ficheKey]||[]} hiRes={true} allSections={allSections}
+            onAdd={function(arr){ setPhotos(ficheKey, function(p){ return (p||[]).concat(arr); }); }}
+            onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(ficheKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+            onUpdate={function(i2,u){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+            onReorder={function(f,t){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+            onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+              setPhotos(ficheKey,function(p){ return (p||[]).concat([src]); });
+              setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+            onMoveTo={function(fi,tk){ var src=(photos[ficheKey]||[])[fi]; if(!src) return;
+              setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+              setPhotos(ficheKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          />
+        </div>
+      )}
+
+      {/* Checklist */}
+      <div style={{ marginBottom: (photos && setPhotos) ? 14 : 0 }}>
+        {ONDULEUR_ITEMS.map(function(it) {
+          return (
+            <CheckItem key={it.key} label={it.label}
+              value={item[it.key]} remark={item[it.key+"Remarque"]}
+              onChange={function(v){ set(it.key, v); }} onRemarkChange={function(v){ set(it.key+"Remarque", v); }} />
+          );
+        })}
+      </div>
+
+      {/* Photos installation */}
+      {photos && setPhotos && (
+        <PhotoZone catKey={installKey} label="📷 Photos installation"
+          items={photos[installKey]||[]} hiRes={false} allSections={allSections}
+          onAdd={function(arr){ setPhotos(installKey, function(p){ return (p||[]).concat(arr); }); }}
+          onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(installKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+          onUpdate={function(i2,u){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+          onReorder={function(f,t){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+          onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+            setPhotos(installKey,function(p){ return (p||[]).concat([src]); });
+            setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          onMoveTo={function(fi,tk){ var src=(photos[installKey]||[])[fi]; if(!src) return;
+            setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+            setPhotos(installKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+        />
+      )}
     </div>
   );
 }
+
 
 // ── PhotoSection helper ───────────────────────────────
 function renderPhotoSection(cats, photos, setPhotos) {
@@ -1895,6 +2000,160 @@ function DCTab({ data, setData }) {
   );
 }
 
+// ── BatterieCard ──────────────────────────────────────
+function BatterieCard({ index, item, onChange, onRemove, canRemove, photos, setPhotos }) {
+  function set(key, val) { onChange(Object.assign({}, item, { [key]: val })); }
+  var ficheKey = "batterie_fiche_"+index;
+  var installKey = "batterie_install_"+index;
+  var allSections = [{ key: ficheKey, label: "Fiche "+(index+1) }, { key: installKey, label: "Installation "+(index+1) }];
+  return (
+    <div style={{ background: WHITE, border: "1.5px solid "+"#d7bde2", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ fontWeight: 700, color: "#8e44ad", fontSize: 14 }}>🔋 Batterie {index+1}</span>
+        {canRemove && (
+          <button onClick={function(){ if(window.confirm("Supprimer batterie "+(index+1)+" ?")) onRemove(); }}
+            style={{ background: "#f5eef8", border: "1px solid "+"#d7bde2", color: "#8e44ad", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", minHeight: 0 }}>
+            🗑 Supprimer
+          </button>
+        )}
+      </div>
+
+      {/* Modèle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={LBL}>Marque & modèle</label>
+        <input type="text" value={item.marque||""} onChange={function(e){ set("marque",e.target.value); }} placeholder="ex: BYD HVM 11.0" />
+      </div>
+
+      {/* Fiche signalétique */}
+      {photos && setPhotos && (
+        <div style={{ marginBottom: 14 }}>
+          <PhotoZone catKey={ficheKey} label="📋 Fiche signalétique"
+            items={photos[ficheKey]||[]} hiRes={true} allSections={allSections}
+            onAdd={function(arr){ setPhotos(ficheKey, function(p){ return (p||[]).concat(arr); }); }}
+            onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(ficheKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+            onUpdate={function(i2,u){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+            onReorder={function(f,t){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+            onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+              setPhotos(ficheKey,function(p){ return (p||[]).concat([src]); });
+              setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+            onMoveTo={function(fi,tk){ var src=(photos[ficheKey]||[])[fi]; if(!src) return;
+              setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+              setPhotos(ficheKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          />
+        </div>
+      )}
+
+      {/* Checklist */}
+      <div style={{ marginBottom: (photos && setPhotos) ? 14 : 0 }}>
+        {BATTERIE_ITEMS.map(function(it) {
+          return (
+            <CheckItem key={it.key} label={it.label}
+              value={item[it.key]} remark={item[it.key+"Remarque"]}
+              onChange={function(v){ set(it.key, v); }} onRemarkChange={function(v){ set(it.key+"Remarque", v); }} />
+          );
+        })}
+      </div>
+
+      {/* Photos installation */}
+      {photos && setPhotos && (
+        <PhotoZone catKey={installKey} label="📷 Photos installation"
+          items={photos[installKey]||[]} hiRes={false} allSections={allSections}
+          onAdd={function(arr){ setPhotos(installKey, function(p){ return (p||[]).concat(arr); }); }}
+          onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(installKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+          onUpdate={function(i2,u){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+          onReorder={function(f,t){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+          onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+            setPhotos(installKey,function(p){ return (p||[]).concat([src]); });
+            setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          onMoveTo={function(fi,tk){ var src=(photos[installKey]||[])[fi]; if(!src) return;
+            setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+            setPhotos(installKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ── BorneCard ──────────────────────────────────────
+function BorneCard({ index, item, onChange, onRemove, canRemove, photos, setPhotos }) {
+  function set(key, val) { onChange(Object.assign({}, item, { [key]: val })); }
+  var ficheKey = "borne_fiche_"+index;
+  var installKey = "borne_install_"+index;
+  var allSections = [{ key: ficheKey, label: "Fiche "+(index+1) }, { key: installKey, label: "Installation "+(index+1) }];
+  return (
+    <div style={{ background: WHITE, border: "1.5px solid "+"#a2d9ce", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ fontWeight: 700, color: "#16a085", fontSize: 14 }}>🔌 Borne {index+1}</span>
+        {canRemove && (
+          <button onClick={function(){ if(window.confirm("Supprimer borne "+(index+1)+" ?")) onRemove(); }}
+            style={{ background: "#e8f8f5", border: "1px solid "+"#a2d9ce", color: "#16a085", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer", minHeight: 0 }}>
+            🗑 Supprimer
+          </button>
+        )}
+      </div>
+
+      {/* Modèle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={LBL}>Marque & modèle</label>
+        <input type="text" value={item.marque||""} onChange={function(e){ set("marque",e.target.value); }} placeholder="ex: Wallbox Pulsar Plus" />
+      </div>
+
+      {/* Fiche signalétique */}
+      {photos && setPhotos && (
+        <div style={{ marginBottom: 14 }}>
+          <PhotoZone catKey={ficheKey} label="📋 Fiche signalétique"
+            items={photos[ficheKey]||[]} hiRes={true} allSections={allSections}
+            onAdd={function(arr){ setPhotos(ficheKey, function(p){ return (p||[]).concat(arr); }); }}
+            onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(ficheKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+            onUpdate={function(i2,u){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+            onReorder={function(f,t){ setPhotos(ficheKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+            onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+              setPhotos(ficheKey,function(p){ return (p||[]).concat([src]); });
+              setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+            onMoveTo={function(fi,tk){ var src=(photos[ficheKey]||[])[fi]; if(!src) return;
+              setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+              setPhotos(ficheKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          />
+        </div>
+      )}
+
+      {/* Checklist */}
+      <div style={{ marginBottom: (photos && setPhotos) ? 14 : 0 }}>
+        {BORNE_ITEMS.map(function(it) {
+          return (
+            <CheckItem key={it.key} label={it.label}
+              value={item[it.key]} remark={item[it.key+"Remarque"]}
+              onChange={function(v){ set(it.key, v); }} onRemarkChange={function(v){ set(it.key+"Remarque", v); }} />
+          );
+        })}
+      </div>
+
+      {/* Photos installation */}
+      {photos && setPhotos && (
+        <PhotoZone catKey={installKey} label="📷 Photos installation"
+          items={photos[installKey]||[]} hiRes={false} allSections={allSections}
+          onAdd={function(arr){ setPhotos(installKey, function(p){ return (p||[]).concat(arr); }); }}
+          onDelete={function(i2){ if(!window.confirm("Supprimer ?")) return; setPhotos(installKey, function(p){ return (p||[]).filter(function(_,j){ return j!==i2; }); }); }}
+          onUpdate={function(i2,u){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); a[i2]=u; return a; }); }}
+          onReorder={function(f,t){ setPhotos(installKey, function(p){ var a=[].concat(p||[]); var it=a.splice(f,1)[0]; a.splice(t,0,it); return a; }); }}
+          onReceiveCross={function(fk,fi){ var src=(photos[fk]||[])[fi]; if(!src) return;
+            setPhotos(installKey,function(p){ return (p||[]).concat([src]); });
+            setPhotos(fk,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+          onMoveTo={function(fi,tk){ var src=(photos[installKey]||[])[fi]; if(!src) return;
+            setPhotos(tk,function(p){ return (p||[]).concat([src]); });
+            setPhotos(installKey,function(p){ return (p||[]).filter(function(_,j){ return j!==fi; }); }); }}
+        />
+      )}
+    </div>
+  );
+}
+
+
 // ── ACTab ─────────────────────────────────────────────
 function ACTab({ data, setData }) {
   var comp = calcACCompletion(data);
@@ -1902,46 +2161,42 @@ function ACTab({ data, setData }) {
 
   function setItem(sectionKey, itemKey, value) {
     setData(function(prev){
-      var next = Object.assign({}, prev);
-      next.ac = Object.assign({}, prev.ac);
-      next.ac.items = Object.assign({}, prev.ac.items);
-      next.ac.items[sectionKey] = Object.assign({}, prev.ac.items[sectionKey]);
-      next.ac.items[sectionKey][itemKey] = value;
-      return next;
-    });
-  }
-  function setNumber(sectionKey, fieldKey, value) { setItem(sectionKey, fieldKey, value); }
-  function setOnduleur(idx, updated) {
-    setData(function(prev){
-      var next = Object.assign({}, prev);
-      next.ac = Object.assign({}, prev.ac);
-      var onds = [].concat(prev.ac.onduleurs||[]);
-      onds[idx] = updated;
-      next.ac = Object.assign({}, next.ac, { onduleurs: onds });
-      return next;
-    });
-  }
-  function addOnduleur() {
-    setData(function(prev){
-      var next = Object.assign({}, prev);
-      next.ac = Object.assign({}, prev.ac, { onduleurs: (prev.ac.onduleurs||[]).concat([makeDefaultOnduleur()]) });
-      return next;
-    });
-  }
-  function removeOnduleur(idx) {
-    setData(function(prev){
-      var next = Object.assign({}, prev);
-      next.ac = Object.assign({}, prev.ac, { onduleurs: (prev.ac.onduleurs||[]).filter(function(_,i){ return i!==idx; }) });
-      return next;
+      var n = Object.assign({}, prev); n.ac = Object.assign({}, prev.ac);
+      n.ac.items = Object.assign({}, prev.ac.items);
+      n.ac.items[sectionKey] = Object.assign({}, prev.ac.items[sectionKey]);
+      n.ac.items[sectionKey][itemKey] = value;
+      return n;
     });
   }
   function setPhotos(catKey, updater) {
     setData(function(prev){
-      var next = Object.assign({}, prev);
-      next.ac = Object.assign({}, prev.ac);
-      next.ac.photos = Object.assign({}, prev.ac.photos);
-      next.ac.photos[catKey] = typeof updater === "function" ? updater(prev.ac.photos[catKey]||[]) : updater;
-      return next;
+      var n = Object.assign({}, prev); n.ac = Object.assign({}, prev.ac);
+      n.ac.photos = Object.assign({}, prev.ac.photos);
+      n.ac.photos[catKey] = typeof updater === "function" ? updater(prev.ac.photos[catKey]||[]) : updater;
+      return n;
+    });
+  }
+  function setOnduleur(idx, updated) {
+    setData(function(prev){
+      var n = Object.assign({}, prev); n.ac = Object.assign({}, prev.ac);
+      var onds = [].concat(prev.ac.onduleurs||[]);
+      onds[idx] = updated;
+      n.ac = Object.assign({}, n.ac, { onduleurs: onds });
+      return n;
+    });
+  }
+  function addOnduleur() {
+    setData(function(prev){
+      var n = Object.assign({}, prev);
+      n.ac = Object.assign({}, prev.ac, { onduleurs: (prev.ac.onduleurs||[]).concat([makeDefaultOnduleur()]) });
+      return n;
+    });
+  }
+  function removeOnduleur(idx) {
+    setData(function(prev){
+      var n = Object.assign({}, prev);
+      n.ac = Object.assign({}, prev.ac, { onduleurs: (prev.ac.onduleurs||[]).filter(function(_,i){ return i!==idx; }) });
+      return n;
     });
   }
 
@@ -1950,31 +2205,17 @@ function ACTab({ data, setData }) {
       <CompletionBar done={comp.done} total={comp.total} nokCount={comp.nokCount} color={AC_COLOR} />
       <NOKSummary nokItems={nokItems} tab="AC" />
 
-      {/* Sections 1 & 2 */}
-      {[AC_SECTIONS[0], AC_SECTIONS[1]].map(function(s) {
-        var sData = (data.ac.items||{})[s.key] || {};
-        return (
-          <SectionBlock key={s.key} icon={s.icon} label={s.label} color={AC_COLOR}>
-            {(s.items||[]).map(function(it) {
-              return (
-                <CheckItem key={it.key} label={it.label}
-                  value={sData[it.key]} remark={sData[it.key+"Remarque"]}
-                  onChange={function(v){ setItem(s.key, it.key, v); }}
-                  onRemarkChange={function(v){ setItem(s.key, it.key+"Remarque", v); }} />
-              );
-            })}
-          </SectionBlock>
-        );
-      })}
-
-      {/* Section 3 : Onduleurs */}
-      <SectionBlock icon="🔆" label="3 · Onduleur(s)" color={AC_COLOR}>
+      {/* Section Onduleurs */}
+      <SectionBlock icon="🔆" label="Onduleur(s)" color={AC_COLOR}>
         {(data.ac.onduleurs||[]).map(function(o, i) {
           return (
-            <OnduleurCard key={i} index={i} onduleur={o}
+            <OnduleurCard key={i} index={i} item={o}
               onChange={function(updated){ setOnduleur(i, updated); }}
               onRemove={function(){ removeOnduleur(i); }}
-              canRemove={(data.ac.onduleurs||[]).length > 1} />
+              canRemove={(data.ac.onduleurs||[]).length > 1}
+              photos={data.ac.photos||{}}
+              setPhotos={setPhotos}
+            />
           );
         })}
         <button onClick={addOnduleur}
@@ -1983,11 +2224,66 @@ function ACTab({ data, setData }) {
         </button>
       </SectionBlock>
 
-      {/* Sections 4-7 */}
-      {AC_SECTIONS.slice(2).map(function(s) {
+      {/* Section Batteries (optionnelle) */}
+      <SectionBlock icon="🔋" label={"Batteries"+(( data.ac.batteries||[]).length > 0 ? " ("+(data.ac.batteries||[]).length+")" : "")} color="#8e44ad" defaultOpen={(data.ac.batteries||[]).length > 0}>
+        {(data.ac.batteries||[]).map(function(b, i) {
+          return (
+            <BatterieCard key={i} index={i} item={b}
+              onChange={function(updated){
+                setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac);
+                  var arr=[].concat(prev.ac.batteries||[]); arr[i]=updated;
+                  n.ac=Object.assign({},n.ac,{batteries:arr}); return n; });
+              }}
+              onRemove={function(){
+                setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,
+                  {batteries:(prev.ac.batteries||[]).filter(function(_,j){ return j!==i; })}); return n; });
+              }}
+              canRemove={(data.ac.batteries||[]).length > 1}
+              photos={data.ac.photos||{}} setPhotos={setPhotos}
+            />
+          );
+        })}
+        <button onClick={function(){
+          setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,
+            {batteries:(prev.ac.batteries||[]).concat([makeDefaultBatterie()])}); return n; });
+        }} style={{ width:"100%", padding:"10px", border:"2px dashed #d7bde2", background:"#f5eef8", color:"#8e44ad", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", marginTop:4 }}>
+          + Ajouter une batterie
+        </button>
+      </SectionBlock>
+
+      {/* Section Bornes de recharge (optionnelle) */}
+      <SectionBlock icon="🔌" label={"Bornes de recharge"+(( data.ac.bornes||[]).length > 0 ? " ("+(data.ac.bornes||[]).length+")" : "")} color="#16a085" defaultOpen={(data.ac.bornes||[]).length > 0}>
+        {(data.ac.bornes||[]).map(function(b, i) {
+          return (
+            <BorneCard key={i} index={i} item={b}
+              onChange={function(updated){
+                setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac);
+                  var arr=[].concat(prev.ac.bornes||[]); arr[i]=updated;
+                  n.ac=Object.assign({},n.ac,{bornes:arr}); return n; });
+              }}
+              onRemove={function(){
+                setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,
+                  {bornes:(prev.ac.bornes||[]).filter(function(_,j){ return j!==i; })}); return n; });
+              }}
+              canRemove={(data.ac.bornes||[]).length > 1}
+              photos={data.ac.photos||{}} setPhotos={setPhotos}
+            />
+          );
+        })}
+        <button onClick={function(){
+          setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,
+            {bornes:(prev.ac.bornes||[]).concat([makeDefaultBorne()])}); return n; });
+        }} style={{ width:"100%", padding:"10px", border:"2px dashed #a2d9ce", background:"#e8f8f5", color:"#16a085", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", marginTop:4 }}>
+          + Ajouter une borne de recharge
+        </button>
+      </SectionBlock>
+
+      {/* Toutes les sections AC avec photos intégrées */}
+      {AC_SECTIONS.map(function(s) {
         var sData = (data.ac.items||{})[s.key] || {};
         return (
           <SectionBlock key={s.key} icon={s.icon} label={s.label} color={AC_COLOR}>
+            {/* Items */}
             {(s.items||[]).map(function(it) {
               return (
                 <CheckItem key={it.key} label={it.label}
@@ -1996,40 +2292,53 @@ function ACTab({ data, setData }) {
                   onRemarkChange={function(v){ setItem(s.key, it.key+"Remarque", v); }} />
               );
             })}
+
+            {/* Champs numériques / temps */}
             {((s.numericFields||[]).length > 0 || (s.timeFields||[]).length > 0) && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10, marginBottom: 10 }}>
                 {(s.numericFields||[]).map(function(f) {
-                  return <NumField key={f.key} label={f.label} value={sData[f.key]} placeholder={f.placeholder} onChange={function(v){ setNumber(s.key, f.key, v); }} />;
+                  return <NumField key={f.key} label={f.label} value={sData[f.key]} placeholder={f.placeholder}
+                    onChange={function(v){ setItem(s.key, f.key, v); }} />;
                 })}
                 {(s.timeFields||[]).map(function(f) {
                   return (
                     <div key={f.key} style={{ flex: 1, minWidth: 160 }}>
                       <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 4, display: "block" }}>{f.label}</label>
-                      <input type="time" value={sData[f.key]||""} onChange={function(e){ setNumber(s.key, f.key, e.target.value); }} />
+                      <input type="time" value={sData[f.key]||""} onChange={function(e){ setItem(s.key, f.key, e.target.value); }} />
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Photos intégrées dans la section */}
+            {(s.photoCats||[]).length > 0 && (
+              <div style={{ marginTop: (s.items||[]).length > 0 ? 12 : 0 }}>
+                {renderPhotoSection(s.photoCats, data.ac.photos||{}, setPhotos)}
+              </div>
+            )}
+
+            {/* Zone remarques (si hasRemarks) */}
+            {s.hasRemarks && (
+              <div style={{ marginTop: 12 }}>
+                <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 5, display: "block" }}>Remarques</label>
+                <textarea value={sData["_remarques"]||""} onChange={function(e){ setItem(s.key, "_remarques", e.target.value); }}
+                  placeholder="Remarques sur le câblage AC…" style={{ width: "100%", minHeight: 72, resize: "vertical", fontSize: 13, borderRadius: 6, border: "1px solid "+BORDER, padding: "7px 10px", fontFamily: "inherit" }} />
               </div>
             )}
           </SectionBlock>
         );
       })}
 
-      {/* Photos AC */}
-      <SectionBlock icon="📷" label="8 · Photos AC obligatoires (HD)" color={AC_COLOR}>
-        {renderPhotoSection(AC_PHOTO_CATS, data.ac.photos||{}, setPhotos)}
-      </SectionBlock>
-
-      {/* Observations */}
-      <SectionBlock icon="📝" label="9 · Observations & Remarques AC" color={AC_COLOR}>
-        <label style={{ fontSize: 12, color: MUTED, fontWeight: 500, marginBottom: 6, display: "block" }}>Remarques générales AC</label>
-        <textarea value={data.ac.observations||""} onChange={function(e){ setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,{observations:e.target.value}); return n; }); }}
-          placeholder="Observations libres…" style={{ minHeight: 100, resize: "vertical", width: "100%" }} />
+      {/* Observations générales AC */}
+      <SectionBlock icon="📝" label="Observations & Remarques AC" color={AC_COLOR} defaultOpen={false}>
+        <textarea value={data.ac.observations||""} onChange={function(e){
+          setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,{observations:e.target.value}); return n; });
+        }} placeholder="Observations libres…" style={{ minHeight: 90, resize: "vertical", width: "100%" }} />
       </SectionBlock>
 
       <SignatureBlock title="✍️ Signature Responsable AC"
-        name={data.ac.signatureName} heureFin={data.ac.heureFin}
-        color={AC_COLOR}
+        name={data.ac.signatureName} heureFin={data.ac.heureFin} color={AC_COLOR}
         onName={function(v){ setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,{signatureName:v}); return n; }); }}
         onHeure={function(v){ setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac,{heureFin:v}); return n; }); }}
       />
