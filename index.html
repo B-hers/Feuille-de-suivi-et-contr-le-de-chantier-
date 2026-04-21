@@ -224,23 +224,64 @@ const SUPA_KEY = "sb_publishable_T4Syy3Nq5mLK0yqOUNgtEg_od2WUXEY";
 const GOOGLE_CLIENT_ID = "765677431332-2leuvo90bvhnmid77hml6cj230av8eao.apps.googleusercontent.com";
 const ALLOWED_DOMAIN = "we-green.be";
 
-async function supaLoad(ref) {
+// ── Supabase multi-feuilles ──────────────────────────────
+async function supaLoadList(ref) {
   try {
-    var res = await fetch(SUPA_URL + "/rest/v1/feuilles_controle?ref=eq." + encodeURIComponent(ref) + "&select=data,updated_at", {
-      headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY }
-    });
+    var res = await fetch(
+      SUPA_URL + "/rest/v1/feuilles_controle?ref=eq." + encodeURIComponent(ref) +
+      "&select=id,ref,label,created_at,updated_at&order=updated_at.desc",
+      { headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
+    );
     var rows = await res.json();
-    if (rows && rows.length > 0) return rows[0];
-  } catch(e) {}
-  return null;
+    return Array.isArray(rows) ? rows : [];
+  } catch(e) { return []; }
 }
 
-async function supaSave(ref, data) {
+async function supaLoadById(id) {
   try {
-    await fetch(SUPA_URL + "/rest/v1/feuilles_controle", {
+    var res = await fetch(
+      SUPA_URL + "/rest/v1/feuilles_controle?id=eq." + id + "&select=id,ref,label,data,updated_at",
+      { headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY } }
+    );
+    var rows = await res.json();
+    return (rows && rows.length > 0) ? rows[0] : null;
+  } catch(e) { return null; }
+}
+
+async function supaCreate(ref, label, data) {
+  try {
+    var res = await fetch(SUPA_URL + "/rest/v1/feuilles_controle", {
       method: "POST",
-      headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
-      body: JSON.stringify({ ref: ref, data: data, updated_at: new Date().toISOString() })
+      headers: {
+        "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+        "Content-Type": "application/json", "Prefer": "return=representation"
+      },
+      body: JSON.stringify({ ref: ref, label: label || "", data: data, updated_at: new Date().toISOString() })
+    });
+    var rows = await res.json();
+    return (rows && rows.length > 0) ? rows[0] : null;
+  } catch(e) { return null; }
+}
+
+async function supaUpdate(id, data) {
+  try {
+    await fetch(SUPA_URL + "/rest/v1/feuilles_controle?id=eq." + id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ data: data, updated_at: new Date().toISOString() })
+    });
+    return true;
+  } catch(e) { return false; }
+}
+
+async function supaDeleteSheet(id) {
+  try {
+    await fetch(SUPA_URL + "/rest/v1/feuilles_controle?id=eq." + id, {
+      method: "DELETE",
+      headers: { "apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY }
     });
     return true;
   } catch(e) { return false; }
@@ -2346,6 +2387,140 @@ function ACTab({ data, setData }) {
   );
 }
 
+// ── SheetSelector ────────────────────────────────────────────────────────────
+function SheetSelector({ refChantier, currentId, onSelect, onNew, onDelete }) {
+  var [list, setList] = useState([]);
+  var [loadingList, setLoadingList] = useState(false);
+  var [newLabel, setNewLabel] = useState("");
+  var [creating, setCreating] = useState(false);
+  var [showNew, setShowNew] = useState(false);
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    return d.toLocaleDateString("fr-BE", { day:"2-digit", month:"2-digit", year:"numeric" }) +
+           " " + d.toLocaleTimeString("fr-BE", { hour:"2-digit", minute:"2-digit" });
+  }
+
+  useEffect(function() {
+    if (!refChantier) { setList([]); return; }
+    setLoadingList(true);
+    supaLoadList(refChantier).then(function(rows) {
+      setList(rows);
+      setLoadingList(false);
+    });
+  }, [refChantier]);
+
+  function handleCreate() {
+    if (!newLabel.trim() || creating) return;
+    setCreating(true);
+    var emptyData = makeDefaultData();
+    emptyData.meta.ref = refChantier;
+    supaCreate(refChantier, newLabel.trim(), emptyData).then(function(created) {
+      if (created) {
+        setList(function(l){ return [created].concat(l); });
+        setShowNew(false);
+        setNewLabel("");
+        onNew(created.id, newLabel.trim());
+      }
+      setCreating(false);
+    });
+  }
+
+  if (!refChantier) return null;
+
+  return (
+    <div style={{ background: WHITE, borderBottom: "1px solid #e8e8e4", padding: "10px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showNew || list.length > 0 ? 8 : 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: GREEN, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          📋 Feuilles de contrôle — {refChantier}
+          {loadingList && <span style={{ fontWeight: 400, color: MUTED, marginLeft: 8 }}>⏳</span>}
+          {!loadingList && list.length > 0 && <span style={{ fontWeight: 400, color: MUTED, marginLeft: 6 }}>({list.length})</span>}
+        </div>
+        <button onClick={function(){ setShowNew(function(v){ return !v; }); setNewLabel(""); }}
+          style={{ background: GREEN, color: WHITE, border: "none", borderRadius: 7, padding: "6px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          + Nouvelle feuille
+        </button>
+      </div>
+
+      {/* Formulaire nouvelle feuille */}
+      {showNew && (
+        <div style={{ background: "#f0f7f2", borderRadius: 8, padding: "10px 12px", marginBottom: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="text" value={newLabel}
+            onChange={function(e){ setNewLabel(e.target.value); }}
+            onKeyDown={function(e){ if(e.key==="Enter") handleCreate(); }}
+            placeholder="Nom de la visite : ex. Contrôle initial, SAV 22/04…"
+            style={{ flex: 1, minWidth: 200, fontSize: 13 }} autoFocus />
+          <button onClick={handleCreate} disabled={!newLabel.trim() || creating}
+            style={{ background: creating || !newLabel.trim() ? "#aaa" : GREEN, color: WHITE, border: "none", borderRadius: 7, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            {creating ? "⏳" : "✓ Créer"}
+          </button>
+          <button onClick={function(){ setShowNew(false); }}
+            style={{ background: "#e8e8e4", border: "none", borderRadius: 7, padding: "7px 12px", fontSize: 13, cursor: "pointer" }}>
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {/* Liste des feuilles */}
+      {!loadingList && list.length === 0 && !showNew && (
+        <div style={{ fontSize: 12, color: MUTED, fontStyle: "italic" }}>
+          Aucune feuille pour ce chantier — créez-en une avec le bouton ci-dessus.
+        </div>
+      )}
+
+      {list.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {list.map(function(sheet) {
+            var isCurrent = sheet.id === currentId;
+            return (
+              <div key={sheet.id}
+                onClick={function(){ if (!isCurrent) onSelect(sheet.id); }}
+                style={{
+                  background: isCurrent ? GREEN : "#f8f8f6",
+                  border: "1.5px solid " + (isCurrent ? GREEN : BORDER),
+                  borderRadius: 8, padding: "7px 11px",
+                  cursor: isCurrent ? "default" : "pointer",
+                  display: "flex", alignItems: "center", gap: 8,
+                  transition: "background 0.12s, border 0.12s"
+                }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: isCurrent ? WHITE : "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {sheet.label || "Sans titre"}
+                  </div>
+                  <div style={{ fontSize: 10, color: isCurrent ? "rgba(255,255,255,0.7)" : MUTED, marginTop: 1 }}>
+                    {fmtDate(sheet.updated_at)}
+                  </div>
+                </div>
+                {isCurrent && (
+                  <span style={{ fontSize: 9, fontWeight: 700, background: "rgba(255,255,255,0.22)", borderRadius: 4, padding: "1px 6px", color: WHITE, textTransform: "uppercase", flexShrink: 0 }}>
+                    ouverte
+                  </span>
+                )}
+                {!isCurrent && (
+                  <button onClick={function(e){
+                    e.stopPropagation();
+                    if (!window.confirm("Supprimer \"" + (sheet.label||"Sans titre") + "\" ?\nCette action est irréversible.")) return;
+                    supaDeleteSheet(sheet.id).then(function(ok) {
+                      if (ok) {
+                        setList(function(l){ return l.filter(function(s){ return s.id !== sheet.id; }); });
+                        if (sheet.id === currentId) onDelete();
+                      }
+                    });
+                  }} title="Supprimer cette feuille"
+                    style={{ background: "none", border: "none", color: "#bbb", cursor: "pointer", padding: "0 2px", fontSize: 14, lineHeight: 1, flexShrink: 0, minHeight: 0 }}>
+                    🗑
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── HeaderSection ─────────────────────────────────────
 function HeaderSection({ data, setData, onLoad, onPrefill, prefillMsg, loading }) {
   var [refInput, setRefInput] = useState(data.meta.ref||"");
@@ -2407,6 +2582,7 @@ function HeaderSection({ data, setData, onLoad, onPrefill, prefillMsg, loading }
 function App() {
   var [user, setUser] = useState(null);
   var [data, setData] = useState(makeDefaultData);
+  var [currentSheetId, setCurrentSheetId] = useState(null);
   var [activeTab, setActiveTab] = useState("dc");
   var [saveStatus, setSaveStatus] = useState("idle");
   var [loading, setLoading] = useState(false);
@@ -2429,20 +2605,34 @@ function App() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSaveStatus("saving");
     debounceRef.current = setTimeout(async function() {
-      var ok = await supaSave(ref, data);
+      var ok = false;
+      if (currentSheetId) {
+        ok = await supaUpdate(currentSheetId, data);
+      } else {
+        // Pas encore de feuille ouverte : créer automatiquement
+        var label = "Contrôle " + new Date().toLocaleDateString("fr-BE", { day:"2-digit", month:"2-digit", year:"numeric" });
+        var created = await supaCreate(ref, label, data);
+        if (created) { setCurrentSheetId(created.id); ok = true; }
+      }
       setSaveStatus(ok ? "saved" : "error");
       setTimeout(function(){ setSaveStatus("idle"); }, 2500);
     }, 2000);
     return function() { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [data]);
+  }, [data, currentSheetId]);
 
-  // Load from Supabase
+  // Load from Supabase — charge la feuille la plus récente pour ce ref
   async function loadData(ref) {
     if (!ref) return;
     setLoading(true);
-    var row = await supaLoad(ref);
-    if (row && row.data) {
-      setData(deepMerge(makeDefaultData(), row.data));
+    var list = await supaLoadList(ref);
+    if (list.length > 0) {
+      var row = await supaLoadById(list[0].id);
+      if (row && row.data) {
+        setData(deepMerge(makeDefaultData(), row.data));
+        setCurrentSheetId(list[0].id);
+      }
+    } else {
+      setCurrentSheetId(null);
     }
     setLoading(false);
   }
@@ -2502,6 +2692,41 @@ function App() {
 
       {/* Common header */}
       <HeaderSection data={data} setData={setData} onLoad={loadData} onPrefill={prefillFromChantier} prefillMsg={prefillMsg} loading={loading} />
+
+      {/* Sheet selector */}
+      <SheetSelector
+        refChantier={data.meta.ref}
+        currentId={currentSheetId}
+        onSelect={async function(id) {
+          setLoading(true);
+          var row = await supaLoadById(id);
+          if (row && row.data) {
+            setData(deepMerge(makeDefaultData(), row.data));
+            setCurrentSheetId(id);
+          }
+          setLoading(false);
+        }}
+        onNew={function(id, label) {
+          var fresh = makeDefaultData();
+          fresh.meta.ref = data.meta.ref;
+          fresh.meta.client = data.meta.client;
+          fresh.meta.adresse = data.meta.adresse;
+          fresh.meta.pm = data.meta.pm;
+          setData(fresh);
+          setCurrentSheetId(id);
+        }}
+        onDelete={function() {
+          setCurrentSheetId(null);
+          setData(function(prev){
+            var fresh = makeDefaultData();
+            fresh.meta.ref = prev.meta.ref;
+            fresh.meta.client = prev.meta.client;
+            fresh.meta.adresse = prev.meta.adresse;
+            fresh.meta.pm = prev.meta.pm;
+            return fresh;
+          });
+        }}
+      />
 
       {/* Tabs */}
       <div id="no-print" style={{ display: "flex", background: WHITE, borderBottom: "2px solid #e8e8e4", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
