@@ -548,7 +548,7 @@ function makeDefaultData() {
   return {
     meta: { ref: "", client: "", adresse: "", dateControle: "", controleur: "", equipe: "", pm: "" },
     dc: { items: makeDefaultDCItems(), photos: makeDefaultDCPhotos(), stringTensions: {}, observations: "", signatureName: "", heureFin: "" },
-    ac: { onduleurs: [makeDefaultOnduleur()], batteries: [], bornes: [],
+    ac: { onduleurs: [makeDefaultOnduleur()], batteries: [], bornes: [], appareils: [],
           acTableaux: [{ type: "TGBT", nom: "" }],
           acConfig: { configSysteme: false, creationCentrale: false, connexionInternet: false, inviterClient: false, expliquerClient: false },
           acSchemas: { schemaUnifiliaire: false, schemaPosition: false, tgbtClient: false, tableauWegreen: false, onduleurBorne: false, compteur: false, terre: false, nommages: false },
@@ -2232,30 +2232,55 @@ function ACTab({ data, setData }) {
   }
   function setAcConfig(key) {
     setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac);
-      var cfg=Object.assign({},prev.ac.acConfig||{});
-      cfg[key]=!cfg[key];
+      var cfg=Object.assign({},prev.ac.acConfig||{}); cfg[key]=!cfg[key];
       n.ac=Object.assign({},n.ac,{acConfig:cfg}); return n; });
   }
   function setAcSchemas(key) {
     setData(function(prev){ var n=Object.assign({},prev); n.ac=Object.assign({},prev.ac);
-      var sch=Object.assign({},prev.ac.acSchemas||{});
-      sch[key]=!sch[key];
+      var sch=Object.assign({},prev.ac.acSchemas||{}); sch[key]=!sch[key];
       n.ac=Object.assign({},n.ac,{acSchemas:sch}); return n; });
+  }
+  // Unified appareils array (merges onduleurs/batteries/bornes into one list)
+  function getAppareils() {
+    var list = [];
+    (data.ac.onduleurs||[]).forEach(function(o){ list.push(Object.assign({_src:"onduleurs"}, o, {type: o.type||"Onduleur"})); });
+    (data.ac.batteries||[]).forEach(function(b){ list.push(Object.assign({_src:"batteries"}, b, {type: b.type||"Batterie"})); });
+    (data.ac.bornes||[]).forEach(function(b){ list.push(Object.assign({_src:"bornes"}, b, {type: b.type||"Borne de recharge"})); });
+    // Also use ac.appareils if present (new unified format)
+    return (data.ac.appareils && data.ac.appareils.length > 0) ? data.ac.appareils : list;
+  }
+  function setAppareils(newList) {
+    setData(function(prev){ var n=Object.assign({},prev);
+      n.ac=Object.assign({},prev.ac,{appareils:newList}); return n; });
+  }
+  function addAppareil() {
+    var cur = getAppareils();
+    setAppareils(cur.concat([{type:"Onduleur", nom:""}]));
+  }
+  function removeAppareil(idx) {
+    var cur = getAppareils();
+    setAppareils(cur.filter(function(_,j){ return j!==idx; }));
+  }
+  function updateAppareil(idx, updated) {
+    var cur = getAppareils().map(function(a,j){ return j===idx ? updated : a; });
+    setAppareils(cur);
   }
 
   var acPhotos  = data.ac.photos   || {};
   var acConfig  = data.ac.acConfig  || {};
   var acSchemas = data.ac.acSchemas || {};
   var acTableaux = data.ac.acTableaux || [{ type: "TGBT", nom: "" }];
+  var appareils = getAppareils();
+  if (appareils.length === 0) appareils = [{type:"Onduleur", nom:""}];
 
   // ── helpers ─────────────────────────────────────────
   function GrandTitre({ title, emoji, children }) {
     return (
       <div style={{ marginBottom: 18 }}>
         <div style={{ background: AC_COLOR, color: WHITE, fontWeight: 700, fontSize: 14,
-          padding: "8px 14px", borderRadius: "10px 10px 0 0",
+          padding: "9px 14px", borderRadius: "10px 10px 0 0",
           display: "flex", alignItems: "center", gap: 8 }}>
-          {emoji}<span>{title}</span>
+          {emoji && <span>{emoji}</span>}<span>{title}</span>
         </div>
         <div style={{ border: "1px solid "+AC_BORDER, borderTop: "none",
           borderRadius: "0 0 10px 10px", padding: "14px", background: WHITE }}>
@@ -2308,100 +2333,106 @@ function ACTab({ data, setData }) {
 
       {/* 1 · Pré-chantier */}
       <GrandTitre emoji="🔍" title="Pré-chantier">
-        <div style={{ fontSize:12, color:MUTED, marginBottom:12 }}>Photos à prendre avant de démarrer les travaux</div>
-        <PZ catKey="ac_pre_general"  label="Vue générale de l'installation" hiRes={true} />
-        <PZ catKey="ac_pre_tgbt"     label="TGBT avant travaux" hiRes={true} />
-        <PZ catKey="ac_pre_compteur" label="Numéro de série du compteur réseau" hiRes={true} />
+        <div style={{ background: AC_LIGHT, borderRadius: 8, padding: "10px 14px", marginBottom: 12,
+          border: "1px solid "+AC_BORDER, fontSize: 13 }}>
+          <div style={{ fontWeight: 600, marginBottom: 6, color: "#444" }}>📋 Photos à inclure :</div>
+          <ul style={{ margin: 0, paddingLeft: 20, color: "#555", lineHeight: 2 }}>
+            <li>Vue générale de l'installation</li>
+            <li>TGBT avant travaux</li>
+            <li>Numéro de série du compteur réseau</li>
+          </ul>
+        </div>
+        <PZ catKey="ac_pre_general" label="📷 Photos pré-chantier" hiRes={true} />
       </GrandTitre>
 
       {/* 2 · Installation électrique */}
       <GrandTitre emoji="⚡" title="Installation électrique">
 
         <SousTitre>🔆 Onduleur / Batterie / Borne de recharge</SousTitre>
-        {(data.ac.onduleurs||[]).map(function(o, i) {
-          return <OnduleurCard key={i} index={i} item={o}
-            onChange={function(u){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac); var a=[].concat(prev.ac.onduleurs||[]); a[i]=u;
-              n.ac=Object.assign({},n.ac,{onduleurs:a}); return n; }); }}
-            onRemove={function(){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac,{onduleurs:(prev.ac.onduleurs||[]).filter(function(_,j){ return j!==i; })}); return n; }); }}
-            canRemove={(data.ac.onduleurs||[]).length > 1}
-            photos={acPhotos} setPhotos={setPhotos} />;
-        })}
-        {(data.ac.batteries||[]).map(function(b, i) {
-          return <BatterieCard key={i} index={i} item={b}
-            onChange={function(u){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac); var a=[].concat(prev.ac.batteries||[]); a[i]=u;
-              n.ac=Object.assign({},n.ac,{batteries:a}); return n; }); }}
-            onRemove={function(){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac,{batteries:(prev.ac.batteries||[]).filter(function(_,j){ return j!==i; })}); return n; }); }}
-            canRemove={(data.ac.batteries||[]).length > 1}
-            photos={acPhotos} setPhotos={setPhotos} />;
-        })}
-        {(data.ac.bornes||[]).map(function(b, i) {
-          return <BorneCard key={i} index={i} item={b}
-            onChange={function(u){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac); var a=[].concat(prev.ac.bornes||[]); a[i]=u;
-              n.ac=Object.assign({},n.ac,{bornes:a}); return n; }); }}
-            onRemove={function(){ setData(function(prev){ var n=Object.assign({},prev);
-              n.ac=Object.assign({},prev.ac,{bornes:(prev.ac.bornes||[]).filter(function(_,j){ return j!==i; })}); return n; }); }}
-            canRemove={(data.ac.bornes||[]).length > 1}
-            photos={acPhotos} setPhotos={setPhotos} />;
-        })}
-        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
-          {[["onduleurs",makeDefaultOnduleur,"+ Onduleur",AC_BORDER,AC_LIGHT,AC_COLOR],
-            ["batteries",makeDefaultBatterie,"+ Batterie","#d7bde2","#f5eef8","#8e44ad"],
-            ["bornes",makeDefaultBorne,"+ Borne","#a2d9ce","#e8f8f5","#16a085"]
-          ].map(function(cfg){
-            var key=cfg[0],factory=cfg[1],lbl=cfg[2],bd=cfg[3],bg=cfg[4],col=cfg[5];
-            return <button key={key} onClick={function(){
-              setData(function(prev){ var n=Object.assign({},prev);
-                n.ac=Object.assign({},prev.ac,{[key]:(prev.ac[key]||[]).concat([factory()])});
-                return n; });
-            }} style={{ flex:1, minWidth:120, padding:"8px", border:"2px dashed "+bd,
-              background:bg, color:col, borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
-              {lbl}
-            </button>;
-          })}
+        <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>
+          📋 Pour chaque appareil : sélectionner le type, saisir le modèle et ajouter la fiche signalétique
         </div>
 
+        {appareils.map(function(app, i) {
+          var photoKey = "ac_app_"+i;
+          return (
+            <div key={i} style={{ background: "#fafafa", border: "1px solid "+AC_BORDER,
+              borderRadius: 9, padding: "12px", marginBottom: 10 }}>
+              <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10, flexWrap:"wrap" }}>
+                <select value={app.type||"Onduleur"}
+                  onChange={function(e){ updateAppareil(i, Object.assign({},app,{type:e.target.value})); }}
+                  style={{ fontSize:13, padding:"6px 10px", borderRadius:7,
+                    border:"1px solid "+AC_BORDER, background:WHITE, fontWeight:600, color:AC_COLOR }}>
+                  {["Onduleur","Batterie","Borne de recharge","NRG Kick"].map(function(t){
+                    return <option key={t} value={t}>{t}</option>;
+                  })}
+                </select>
+                <input value={app.nom||""}
+                  onChange={function(e){ updateAppareil(i, Object.assign({},app,{nom:e.target.value})); }}
+                  placeholder="Modèle / référence…"
+                  style={{ flex:1, fontSize:13, padding:"6px 10px", borderRadius:7, border:"1px solid "+AC_BORDER }} />
+                {appareils.length > 1 && (
+                  <button onClick={function(){ removeAppareil(i); }}
+                    style={{ background:"none", border:"none", color:AC_COLOR,
+                      fontSize:20, cursor:"pointer", padding:"0 4px", minHeight:0 }}>×</button>
+                )}
+              </div>
+              <PZ catKey={photoKey}
+                label={"📷 Fiche signalétique — "+(app.type||"Onduleur")+(app.nom?" ("+app.nom+")":"")}
+                hiRes={true} />
+            </div>
+          );
+        })}
+        <button onClick={addAppareil}
+          style={{ width:"100%", padding:"9px", border:"2px dashed "+AC_BORDER, background:AC_LIGHT,
+            color:AC_COLOR, borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", marginBottom:20 }}>
+          + Ajouter un onduleur / batterie / borne
+        </button>
+
         <SousTitre>🔋 Tableau(x) électriques</SousTitre>
+        <div style={{ fontSize: 12, color: MUTED, marginBottom: 10 }}>
+          📋 Pour chaque tableau : inclure une photo <strong>sans couvercle</strong> + n° série compteur vert
+        </div>
+
         {acTableaux.map(function(tab, i) {
           var photoKey = "ac_tab_"+i;
           return (
-            <div key={i} style={{ background:"#fafafa", border:"1px solid "+AC_BORDER,
-              borderRadius:9, padding:"12px 12px 10px", marginBottom:12 }}>
+            <div key={i} style={{ background: "#fafafa", border: "1px solid "+AC_BORDER,
+              borderRadius: 9, padding: "12px", marginBottom: 10 }}>
               <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10, flexWrap:"wrap" }}>
                 <select value={tab.type}
                   onChange={function(e){ setAcTableau(i, Object.assign({},tab,{type:e.target.value})); }}
-                  style={{ fontSize:13, padding:"5px 8px", borderRadius:6, border:"1px solid "+AC_BORDER, background:WHITE }}>
+                  style={{ fontSize:13, padding:"6px 10px", borderRadius:7,
+                    border:"1px solid "+AC_BORDER, background:WHITE, fontWeight:600, color:AC_COLOR }}>
                   <option value="TGBT">TGBT</option>
                   <option value="TD">Tableau Divisionnaire (TD)</option>
                 </select>
                 <input value={tab.nom||""}
                   onChange={function(e){ setAcTableau(i, Object.assign({},tab,{nom:e.target.value})); }}
                   placeholder="Emplacement / nom…"
-                  style={{ flex:1, fontSize:13, padding:"5px 10px", borderRadius:6, border:"1px solid "+AC_BORDER }} />
+                  style={{ flex:1, fontSize:13, padding:"6px 10px", borderRadius:7, border:"1px solid "+AC_BORDER }} />
                 {acTableaux.length > 1 && (
                   <button onClick={function(){
                     setData(function(prev){ var n=Object.assign({},prev);
-                      n.ac=Object.assign({},prev.ac,{acTableaux:(prev.ac.acTableaux||[]).filter(function(_,j){ return j!==i; })});
-                      return n; });
-                  }} style={{ background:"none", border:"none", color:AC_COLOR, fontSize:20, cursor:"pointer", padding:"0 4px", minHeight:0 }}>×</button>
+                      n.ac=Object.assign({},prev.ac,{
+                        acTableaux:(prev.ac.acTableaux||[]).filter(function(_,j){ return j!==i; })
+                      }); return n; });
+                  }} style={{ background:"none", border:"none", color:AC_COLOR,
+                    fontSize:20, cursor:"pointer", padding:"0 4px", minHeight:0 }}>×</button>
                 )}
               </div>
-              <div style={{ fontSize:12, color:MUTED, marginBottom:8 }}>
-                📋 Inclure : photo du tableau <strong>sans couvercle</strong> · n° série compteur vert
-              </div>
-              <PZ catKey={photoKey} label={"📷 "+tab.type+(tab.nom?" — "+tab.nom:"")} hiRes={true} />
+              <PZ catKey={photoKey}
+                label={"📷 "+(tab.type)+(tab.nom?" — "+tab.nom:"")}
+                hiRes={true} />
             </div>
           );
         })}
         <button onClick={function(){
           setData(function(prev){ var n=Object.assign({},prev);
-            n.ac=Object.assign({},prev.ac,{acTableaux:(prev.ac.acTableaux||[]).concat([{type:"TGBT",nom:""}])});
-            return n; });
-        }} style={{ width:"100%", padding:"8px", border:"2px dashed "+AC_BORDER, background:AC_LIGHT,
+            n.ac=Object.assign({},prev.ac,{
+              acTableaux:(prev.ac.acTableaux||[]).concat([{type:"TGBT",nom:""}])
+            }); return n; });
+        }} style={{ width:"100%", padding:"9px", border:"2px dashed "+AC_BORDER, background:AC_LIGHT,
           color:AC_COLOR, borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer" }}>
           + Ajouter un TGBT / TD
         </button>
@@ -2417,18 +2448,20 @@ function ACTab({ data, setData }) {
                 {[["OK","✅ Conforme","#27ae60"],["NOK","❌ Non conforme",AC_COLOR]].map(function(cfg){
                   var val=cfg[0],lbl=cfg[1],col=cfg[2];
                   var sel = sData.mesureTerreOK === val;
-                  return <button key={val} onClick={function(){ setItem("mesureTerre","mesureTerreOK", sel ? null : val); }}
-                    style={{ padding:"8px 22px", borderRadius:8, border:"2px solid "+(sel?col:"#ddd"),
-                      background:sel?col:WHITE, color:sel?WHITE:"#555", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                    {lbl}
-                  </button>;
+                  return <button key={val}
+                    onClick={function(){ setItem("mesureTerre","mesureTerreOK", sel ? null : val); }}
+                    style={{ padding:"9px 24px", borderRadius:8, border:"2px solid "+(sel?col:"#ddd"),
+                      background:sel?col:WHITE, color:sel?WHITE:"#555",
+                      fontWeight:700, fontSize:14, cursor:"pointer" }}>{lbl}</button>;
                 })}
               </div>
               {sData.mesureTerreOK === "NOK" && (
-                <textarea placeholder="Remarque sur la mise à la terre…" value={sData.mesureTerreOKRemarque||""}
+                <textarea placeholder="Remarque sur la mise à la terre…"
+                  value={sData.mesureTerreOKRemarque||""}
                   onChange={function(e){ setItem("mesureTerre","mesureTerreOKRemarque",e.target.value); }}
                   style={{ width:"100%", minHeight:64, fontSize:13, marginBottom:12, resize:"vertical",
-                    borderRadius:6, border:"1.5px solid "+AC_COLOR, padding:"6px 10px", fontFamily:"inherit" }} />
+                    borderRadius:6, border:"1.5px solid "+AC_COLOR,
+                    padding:"6px 10px", fontFamily:"inherit" }} />
               )}
               <PZ catKey="mesure_terre_ph" label="📷 Photo de la mesure de terre" hiRes={true} />
             </div>
@@ -2436,90 +2469,20 @@ function ACTab({ data, setData }) {
         })()}
       </GrandTitre>
 
-      {/* 4 · Câblage AC & Vérification DC */}
-      <GrandTitre emoji="🔌" title="Câblage AC & Vérification DC">
-        {(function(){
-          var cabData = (data.ac.items||{}).cablage_ac || {};
-          var dcData  = (data.ac.items||{}).verificationDC || {};
-          var sCab = AC_SECTIONS.find(function(s){ return s.key==="cablage_ac"; });
-          var sDC  = AC_SECTIONS.find(function(s){ return s.key==="verificationDC"; });
-          return (
-            <div>
-              <div style={{ fontWeight:700, fontSize:13, color:AC_COLOR, marginBottom:10 }}>Câblage AC</div>
-              {sCab.items.map(function(it){
-                return <CheckItem key={it.key} label={it.label}
-                  value={cabData[it.key]} remark={cabData[it.key+"Remarque"]}
-                  onChange={function(v){ setItem("cablage_ac",it.key,v); }}
-                  onRemarkChange={function(v){ setItem("cablage_ac",it.key+"Remarque",v); }} />;
-              })}
-              <div style={{ display:"flex", gap:10, margin:"10px 0 14px" }}>
-                <NumField label="Valeur disjoncteur AC (A)" value={cabData.ampDisjAC}
-                  placeholder="ex: 16" onChange={function(v){ setItem("cablage_ac","ampDisjAC",v); }} />
-              </div>
-              <PZ catKey="cablage_ac_ph" label="📷 Câblage AC (chemin de câble, section, connexions)" hiRes={true} />
-              <div style={{ fontWeight:700, fontSize:13, color:AC_COLOR, margin:"16px 0 10px" }}>Vérification DC (strings)</div>
-              {sDC.items.map(function(it){
-                return <CheckItem key={it.key} label={it.label}
-                  value={dcData[it.key]} remark={dcData[it.key+"Remarque"]}
-                  onChange={function(v){ setItem("verificationDC",it.key,v); }}
-                  onRemarkChange={function(v){ setItem("verificationDC",it.key+"Remarque",v); }} />;
-              })}
-              {cabData._remarques !== undefined && (
-                <div style={{ marginTop:12 }}>
-                  <label style={{ fontSize:12, color:MUTED, fontWeight:500, marginBottom:5, display:"block" }}>Remarques câblage</label>
-                  <textarea value={cabData._remarques||""} onChange={function(e){ setItem("cablage_ac","_remarques",e.target.value); }}
-                    placeholder="Remarques…" style={{ width:"100%", minHeight:64, resize:"vertical",
-                      fontSize:13, borderRadius:6, border:"1px solid "+BORDER, padding:"7px 10px", fontFamily:"inherit" }} />
-                </div>
-              )}
-            </div>
-          );
-        })()}
-      </GrandTitre>
-
-      {/* 5 · Mise en service */}
-      <GrandTitre emoji="🚀" title="Mise en service">
-        {(function(){
-          var sData = (data.ac.items||{}).miseEnService || {};
-          var s = AC_SECTIONS.find(function(s){ return s.key==="miseEnService"; });
-          return (
-            <div>
-              {s.items.map(function(it){
-                return <CheckItem key={it.key} label={it.label}
-                  value={sData[it.key]} remark={sData[it.key+"Remarque"]}
-                  onChange={function(v){ setItem("miseEnService",it.key,v); }}
-                  onRemarkChange={function(v){ setItem("miseEnService",it.key+"Remarque",v); }} />;
-              })}
-              <div style={{ display:"flex", flexWrap:"wrap", gap:10, margin:"10px 0 12px" }}>
-                <NumField label="Puissance relevée au démarrage" value={sData.puissanceDemarrage}
-                  placeholder="ex: 4200 W" onChange={function(v){ setItem("miseEnService","puissanceDemarrage",v); }} />
-                <div style={{ flex:1, minWidth:160 }}>
-                  <label style={{ fontSize:12, color:MUTED, fontWeight:500, marginBottom:4, display:"block" }}>Heure de mise en service</label>
-                  <input type="time" value={sData.heureMiseEnService||""}
-                    onChange={function(e){ setItem("miseEnService","heureMiseEnService",e.target.value); }} />
-                </div>
-              </div>
-              <PZ catKey="onduleur_ac"    label="📷 Onduleur installé (vue générale + connexions)" hiRes={true} />
-              <PZ catKey="compteur_avant" label="📷 Compteur électrique (AVANT)" hiRes={true} />
-              <PZ catKey="compteur_apres" label="📷 Compteur électrique (APRÈS)" hiRes={true} />
-            </div>
-          );
-        })()}
-      </GrandTitre>
-
-      {/* 6 · Après-chantier */}
+      {/* 4 · Après-chantier */}
       <GrandTitre emoji="🏁" title="Après-chantier">
         <PZ catKey="ac_post_tubages" label="📷 Tubages & câblage (état final)" hiRes={true} />
         <PZ catKey="ac_post_tgbt"   label="📷 TGBT après modifications" hiRes={true} />
       </GrandTitre>
 
-      {/* 7 · Configuration */}
+      {/* 5 · Configuration */}
       <GrandTitre emoji="⚙️" title="Configuration">
-        {[["configSysteme","Configuration du système"],
-          ["creationCentrale","Création de la centrale"],
+        {[
+          ["configSysteme",    "Configuration du système"],
+          ["creationCentrale", "Création de la centrale"],
           ["connexionInternet","Connexion de l'onduleur à internet"],
-          ["inviterClient","Inviter le client sur la plateforme"],
-          ["expliquerClient","Expliquer au client l'usage de la plateforme"],
+          ["inviterClient",    "Inviter le client sur la plateforme"],
+          ["expliquerClient",  "Expliquer au client l'usage de la plateforme"],
         ].map(function(item){
           return <CheckRow key={item[0]} checked={!!acConfig[item[0]]}
             onToggle={function(){ setAcConfig(item[0]); }} label={item[1]} />;
@@ -2529,31 +2492,35 @@ function ACTab({ data, setData }) {
         </div>
       </GrandTitre>
 
-      {/* 8 · Schéma Unifilaire */}
+      {/* 6 · Schéma Unifilaire */}
       <GrandTitre emoji="📐" title="Schéma Unifilaire">
-        {[["schemaUnifiliaire","Schéma unifilaire"],
-          ["schemaPosition","Schéma de position"],
-        ].map(function(item){
-          return <CheckRow key={item[0]} checked={!!acSchemas[item[0]]}
-            onToggle={function(){ setAcSchemas(item[0]); }} label={item[1]} />;
-        })}
-        <div style={{ fontSize:12, color:MUTED, margin:"10px 0 8px", paddingLeft:8,
-          borderLeft:"3px solid "+AC_BORDER, fontStyle:"italic" }}>
-          Schéma de position — s'assurer que les éléments suivants sont nommés :
+        <CheckRow checked={!!acSchemas.schemaUnifiliaire}
+          onToggle={function(){ setAcSchemas("schemaUnifiliaire"); }}
+          label="Schéma unifilaire" />
+        <CheckRow checked={!!acSchemas.schemaPosition}
+          onToggle={function(){ setAcSchemas("schemaPosition"); }}
+          label="Schéma de position" />
+
+        {/* Bullet points (pas checklist) */}
+        <div style={{ background: AC_LIGHT, borderRadius: 8, padding: "10px 14px",
+          margin: "10px 0 12px", border: "1px solid "+AC_BORDER }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            Le schéma de position doit faire apparaître :
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "#555", lineHeight: 2 }}>
+            <li>TGBT client</li>
+            <li>Tableau We Green</li>
+            <li>Onduleur / Borne / NRG Kick / Batterie</li>
+            <li>Compteur réseau</li>
+            <li>Terre</li>
+            <li>Nommer les pièces</li>
+          </ul>
         </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
-          {[["tgbtClient","TGBT client"],["tableauWegreen","Tableau We Green"],
-            ["onduleurBorne","Onduleur / Borne / NRG Kick / Batterie"],
-            ["compteur","Compteur réseau"],["terre","Terre"],["nommages","Nommer les pièces"],
-          ].map(function(item){
-            return <CheckRow key={item[0]} checked={!!acSchemas[item[0]]}
-              onToggle={function(){ setAcSchemas(item[0]); }} label={item[1]} />;
-          })}
-        </div>
+
         <PZ catKey="ac_schema_ph" label="📷 Photos schéma unifilaire" hiRes={true} />
       </GrandTitre>
 
-      {/* 9 · Clôture de chantier */}
+      {/* 7 · Clôture de chantier */}
       <GrandTitre emoji="🔒" title="Clôture de chantier">
         {(function(){
           var sData = (data.ac.items||{}).clotureAC || {};
@@ -2566,14 +2533,7 @@ function ACTab({ data, setData }) {
         })()}
       </GrandTitre>
 
-      {/* Observations & Signature */}
-      <SectionBlock icon="📝" label="Observations & Remarques AC" color={AC_COLOR} defaultOpen={false}>
-        <textarea value={data.ac.observations||""} onChange={function(e){
-          setData(function(prev){ var n=Object.assign({},prev);
-            n.ac=Object.assign({},prev.ac,{observations:e.target.value}); return n; });
-        }} placeholder="Observations libres…" style={{ minHeight:90, resize:"vertical", width:"100%" }} />
-      </SectionBlock>
-
+      {/* Signature */}
       <SignatureBlock title="✍️ Signature Responsable AC"
         name={data.ac.signatureName} heureFin={data.ac.heureFin} color={AC_COLOR}
         onName={function(v){ setData(function(prev){ var n=Object.assign({},prev);
