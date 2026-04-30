@@ -15,14 +15,36 @@ input, select, textarea { font-family: inherit; font-size: 13px; padding: 6px 10
 input:focus, select:focus, textarea:focus { border-color: #1B6B3A; }
 button { font-family: inherit; cursor: pointer; }
 @media print {
-  @page { size: A4 portrait; margin: 12mm 14mm; }
+  @page { size: A4 portrait; margin: 10mm 12mm; }
   body { background: white; margin: 0; font-size: 11px; }
   #no-print, .no-print { display: none !important; }
   .print-only { display: block !important; }
   .check-item { break-inside: avoid; }
   img { max-width: 100%; }
-  .photo-grid-print { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .photo-grid-print img { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; }
+  /* Photos en grand format à l'impression */
+  .photo-grid-print { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .photo-grid-print img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 5px;
+    break-inside: avoid;
+  }
+  /* PhotoZone print: 2 colonnes, hauteur généreuse */
+  [data-photo-grid] {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  [data-photo-grid] img {
+    width: 100% !important;
+    height: 200px !important;
+    object-fit: cover !important;
+    border-radius: 5px !important;
+  }
+  [data-photo-grid] > div { break-inside: avoid; }
+  /* Strings: 1 par page si beaucoup de photos */
+  .string-block { break-inside: avoid; }
 }
 .print-only { display: none; }
 /* Locked section: disable form controls but keep photos interactive */
@@ -241,6 +263,29 @@ const G3 = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200p
 
 const PM_LIST = ["Alexander Vos","Benjamin Hers","Dominic Rousselle","Enguerrand de Formanoir","Hugues Léglise","Nassim Fekreche","Nelson Hohlweg","Romain Janssens","Teresa Rousselle","Thibaut Cougnet","Valentin Dabauvalle","Viktor A","Wajdi Habib","Wissam Elhage","Yohan Poullain"];
 
+// ── Numéros WhatsApp des PMs (format international sans +) ───────────────────
+// Compléter avec les vrais numéros
+const PM_PHONES = {
+  "Alexander Vos":               "32475869276",
+  "Benjamin Hers":               "32479627511",
+  "Dominic Rousselle":           "32495811670",
+  "Enguerrand de Formanoir":     "32495870986",
+  "Hugues Léglise":              "32496576866",
+  "Nassim Fekreche":             "",
+  "Nelson Hohlweg":              "32496775443",
+  "Romain Janssens":             "32493569351",
+  "Teresa Rousselle":            "32497692627",
+  "Thibaut Cougnet":             "32494471185",
+  "Valentin Dabauvalle":         "32470635380",
+  "Viktor A":                    "",
+  "Wajdi Habib":                 "32495288666",
+  "Wissam Elhage":               "32471916313",
+  "Yohan Poullain":              "33642968263",
+};
+
+// Lien du groupe WhatsApp We Green
+const WA_GROUP = "https://chat.whatsapp.com/FTR311YfUk2L4HgNOE0wIX";
+
 // ── Supabase ──────────────────────────────────────────
 const SUPA_URL = "https://qdepdtwrokazceyecege.supabase.co";
 const SUPA_KEY = "sb_publishable_U6PddofdvgpD5IgU4ZsPdg_wqB-5Scw";
@@ -424,12 +469,12 @@ const DC_SECTIONS = [
       { title: "Interdits ❌", items: ["Aucun tirefond sur ardoise — joint en plomb obligatoire", "Morceaux de rails non lancés depuis la toiture", "Bouts de rails non abandonnés sous les panneaux"] },
     ],
     photoCats: [
-      { key: "structures_general", label: "Vue générale structures (sans panneaux)" },
-      { key: "structures_detail", label: "Détails crochets & rails (espacement, vis, planitude)" },
+      { key: "structures_all", label: "📷 Photos structures", merged: true,
+        hints: ["Vue générale des structures sans panneaux", "Détails crochets & rails (espacement, vis, planitude)"] },
     ]
   },
   {
-    key: "cablage_dc", label: "2 · Câblage DC & Tubage", icon: "🔌",
+    key: "cablage_dc", label: "2 · Câblage DC, Tubage & Chemin de câbles", icon: "🔌",
     rules: [
       { title: "Câbles DC", items: ["Câbles tirés par strings (toiture → onduleur)", "Câble de terre tiré", "Tubes de protection posés + étanchéité vérifiée (pas d'eau dans la gaine)", "Câbles colsonnés sous les rails — aucun contact crochet/tuile", "Étanchéité de tous les percements (façade + toiture) vérifiée"] },
       { title: "MC4", items: ["Câble dénudé à 6 cm", "Cosse sertie avec la bonne pince (attention cosse femelle/mâle)", "Chaque MC4 bien serré et verrouillé"] },
@@ -437,9 +482,8 @@ const DC_SECTIONS = [
       { title: "Interdits ❌", items: ["Aucun câble ne pend sous les PV", "Aucun contact câble-toiture ou câble-crochet", "Aucun câble enroulé autour des rails"] },
     ],
     photoCats: [
-      { key: "cablage_sous_pv", label: "Câblage DC sous les panneaux (colsonnage)" },
-      { key: "chemin_cables", label: "Chemin de câbles — tubage — entrée maison" },
-      { key: "arrivee_cables_dc", label: "Arrivée des câbles DC (onduleur / local technique)" },
+      { key: "cablage_dc_all", label: "📷 Photos câblage DC", merged: true,
+        hints: ["Câblage DC sous les panneaux (colsonnage)", "Chemin de câbles — tubage — entrée maison", "Arrivée des câbles DC (onduleur / local technique)"] },
     ]
   },
   {
@@ -637,7 +681,13 @@ function makeDefaultDCPhotos() {
   DC_SECTIONS.forEach(function(s) {
     (s.photoCats||[]).forEach(function(c) { p[c.key] = []; });
   });
-  // String photos stored dynamically as string_ph_0, string_ph_1, etc.
+  // Legacy keys migration
+  p["structures_general"] = p["structures_general"] || [];
+  p["structures_detail"] = p["structures_detail"] || [];
+  p["cablage_sous_pv"] = p["cablage_sous_pv"] || [];
+  p["chemin_cables"] = p["chemin_cables"] || [];
+  p["arrivee_cables_dc"] = p["arrivee_cables_dc"] || [];
+  // String photos stored dynamically
   p["extra_dc"] = [];
   return p;
 }
@@ -1932,35 +1982,47 @@ function OnduleurCard({ index, item, onChange, onRemove, canRemove, photos, setP
 function renderPhotoSection(cats, photos, setPhotos) {
   var allSections = cats.map(function(c){ return { key: c.key, label: c.label }; });
   return cats.map(function(cat) {
+    var hints = cat.hints || [];
     return (
-      <PhotoZone key={cat.key} catKey={cat.key} label={cat.label} items={photos[cat.key]||[]} hiRes={!!cat.hiRes}
-        allSections={allSections}
-        onAdd={function(arr){
-          setPhotos(cat.key, function(prev){ return (prev||[]).concat(arr); });
-        }}
-        onDelete={function(idx){
-          if(!window.confirm("Supprimer cette photo ?")) return;
-          setPhotos(cat.key, function(prev){ return (prev||[]).filter(function(_,i){ return i!==idx; }); });
-        }}
-        onUpdate={function(idx, updated){
-          setPhotos(cat.key, function(prev){ var a=[].concat(prev||[]); a[idx]=updated; return a; });
-        }}
-        onReorder={function(from, to){
-          setPhotos(cat.key, function(prev){
-            var a=[].concat(prev||[]); var item=a.splice(from,1)[0]; a.splice(to,0,item); return a;
-          });
-        }}
-        onReceiveCross={function(fromKey, fromIdx){
-          var srcPhoto = (photos[fromKey]||[])[fromIdx]; if(!srcPhoto) return;
-          setPhotos(cat.key, function(prev){ return (prev||[]).concat([srcPhoto]); });
-          setPhotos(fromKey, function(prev){ return (prev||[]).filter(function(_,i){ return i!==fromIdx; }); });
-        }}
-        onMoveTo={function(fromIdx, toKey){
-          var srcPhoto = (photos[cat.key]||[])[fromIdx]; if(!srcPhoto) return;
-          setPhotos(toKey, function(prev){ return (prev||[]).concat([srcPhoto]); });
-          setPhotos(cat.key, function(prev){ return (prev||[]).filter(function(_,i){ return i!==fromIdx; }); });
-        }}
-      />
+      <div key={cat.key}>
+        {hints.length > 0 && (
+          <div style={{ marginBottom: 6, padding: "6px 10px", background: "#fffdf0",
+            border: "1px solid #e8e0b0", borderRadius: 7, fontSize: 11, color: "#856404" }}>
+            <strong>📌 Attendu dans cette zone :</strong>
+            <ul style={{ margin: "4px 0 0 0", paddingLeft: 16 }}>
+              {hints.map(function(h, hi){ return <li key={hi}>{h}</li>; })}
+            </ul>
+          </div>
+        )}
+        <PhotoZone catKey={cat.key} label={cat.label} items={photos[cat.key]||[]} hiRes={!!cat.hiRes}
+          allSections={allSections}
+          onAdd={function(arr){
+            setPhotos(cat.key, function(prev){ return (prev||[]).concat(arr); });
+          }}
+          onDelete={function(pidx){
+            if(!window.confirm("Supprimer cette photo ?")) return;
+            setPhotos(cat.key, function(prev){ return (prev||[]).filter(function(_,i){ return i!==pidx; }); });
+          }}
+          onUpdate={function(pidx, updated){
+            setPhotos(cat.key, function(prev){ var a=[].concat(prev||[]); a[pidx]=updated; return a; });
+          }}
+          onReorder={function(from, to){
+            setPhotos(cat.key, function(prev){
+              var a=[].concat(prev||[]); var item=a.splice(from,1)[0]; a.splice(to,0,item); return a;
+            });
+          }}
+          onReceiveCross={function(fromKey, fromIdx){
+            var srcPhoto = (photos[fromKey]||[])[fromIdx]; if(!srcPhoto) return;
+            setPhotos(cat.key, function(prev){ return (prev||[]).concat([srcPhoto]); });
+            setPhotos(fromKey, function(prev){ return (prev||[]).filter(function(_,i){ return i!==fromIdx; }); });
+          }}
+          onMoveTo={function(fromIdx, toKey){
+            var srcPhoto = (photos[cat.key]||[])[fromIdx]; if(!srcPhoto) return;
+            setPhotos(toKey, function(prev){ return (prev||[]).concat([srcPhoto]); });
+            setPhotos(cat.key, function(prev){ return (prev||[]).filter(function(_,i){ return i!==fromIdx; }); });
+          }}
+        />
+      </div>
     );
   });
 }
@@ -2002,7 +2064,7 @@ function RulesPanel({ rules, color }) {
 }
 
 // ── StringsSection ────────────────────────────────────────────────────────────
-function StringsSection({ nbStrings, photos, tensions, setPhotos, setTension }) {
+function StringsSection({ nbStrings, photos, tensions, stringNames, stringPVCounts, setPhotos, setTension, setStringName, setStringPVCount }) {
   var count = parseInt(nbStrings) || 0;
   if (count <= 0) {
     return (
@@ -2012,21 +2074,41 @@ function StringsSection({ nbStrings, photos, tensions, setPhotos, setTension }) 
     );
   }
   var allStringCats = [];
-  for (var i = 0; i < count; i++) { allStringCats.push({ key: "string_ph_"+i, label: "String "+(i+1) }); }
+  for (var i = 0; i < count; i++) {
+    var nm = (stringNames&&stringNames[i]) || ("String "+(i+1));
+    allStringCats.push({ key: "string_ph_"+i, label: nm });
+  }
   return (
     <div>
       {allStringCats.map(function(cat, i) {
+        var nm = (stringNames&&stringNames[i]) || "";
+        var pvCount = (stringPVCounts&&stringPVCounts[i]) || "";
+        var displayName = nm || ("String "+(i+1));
         return (
           <div key={i} style={{ marginBottom: 14, border: "1px solid "+DC_BORDER, borderRadius: 9, padding: "12px 12px 6px", background: DC_LIGHT+"55" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
               <span style={{ fontWeight: 700, color: DC_COLOR, fontSize: 14 }}>⚡ String {i+1}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <label style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>Tension mesurée :</label>
+              {/* Nom personnalisé */}
+              <input type="text" value={nm}
+                onChange={function(e){ if(setStringName) setStringName(i, e.target.value); }}
+                placeholder={"Nom (ex: Toiture sud)"}
+                style={{ fontSize: 12, padding: "4px 8px", width: 130, borderRadius: 6,
+                  border: "1px solid "+DC_BORDER, color: DC_COLOR, fontWeight: 600 }} />
+              {/* Nb PV */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <label style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>PV :</label>
+                <input type="number" value={pvCount} min="1" max="99"
+                  onChange={function(e){ if(setStringPVCount) setStringPVCount(i, e.target.value); }}
+                  placeholder="nb" style={{ width: 55, fontSize: 13, padding: "4px 8px" }} />
+              </div>
+              {/* Tension */}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: "auto" }}>
+                <label style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>Tension :</label>
                 <input type="text" value={tensions[i]||""} onChange={function(e){ setTension(i, e.target.value); }}
-                  placeholder="ex: 380V" style={{ width: 80, fontSize: 13, padding: "5px 8px" }} />
+                  placeholder="ex: 380V" style={{ width: 75, fontSize: 13, padding: "4px 8px" }} />
               </div>
             </div>
-            <PhotoZone catKey={cat.key} label={"Photos String "+(i+1)+" (identification + tension)"}
+            <PhotoZone catKey={cat.key} label={"📷 "+displayName+" (identification + tension)"}
               items={photos[cat.key]||[]} hiRes={false}
               allSections={allStringCats}
               onAdd={function(arr){ setPhotos(cat.key, function(prev){ return (prev||[]).concat(arr); }); }}
@@ -2082,6 +2164,24 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
       return n;
     });
   }
+  function setStringName(idx, val) {
+    setData(function(prev){
+      var n = Object.assign({}, prev); n.dc = Object.assign({}, prev.dc);
+      var t = Object.assign({}, prev.dc.stringNames||{});
+      t[idx] = val;
+      n.dc = Object.assign({}, n.dc, { stringNames: t });
+      return n;
+    });
+  }
+  function setStringPVCount(idx, val) {
+    setData(function(prev){
+      var n = Object.assign({}, prev); n.dc = Object.assign({}, prev.dc);
+      var t = Object.assign({}, prev.dc.stringPVCounts||{});
+      t[idx] = val;
+      n.dc = Object.assign({}, n.dc, { stringPVCounts: t });
+      return n;
+    });
+  }
 
   return (
     <div>
@@ -2131,8 +2231,12 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
                   nbStrings={sData["nbStrings"]}
                   photos={data.dc.photos||{}}
                   tensions={data.dc.stringTensions||{}}
+                  stringNames={data.dc.stringNames||{}}
+                  stringPVCounts={data.dc.stringPVCounts||{}}
                   setPhotos={setPhotos}
                   setTension={setStringTension}
+                  setStringName={setStringName}
+                  setStringPVCount={setStringPVCount}
                 />
                 <div style={{ marginTop: 10 }} />
               </div>
@@ -2183,6 +2287,7 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
           </div>
         </div>
       )}
+      <WhatsAppNotify data={data} tab="dc" dcComp={comp} acComp={null} />
     </div>
   );
 }
@@ -2698,6 +2803,7 @@ function ACTab({ data, setData, locked, isWGE, onUnlock }) {
           </div>
         </div>
       )}
+      <WhatsAppNotify data={data} tab="ac" dcComp={null} acComp={comp} />
     </div>
   );
 }
@@ -3366,6 +3472,7 @@ function SAVTab({ data, setData }) {
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
         + Nouvelle intervention SAV
       </button>
+      <WhatsAppNotify data={data} tab="sav" dcComp={null} acComp={null} />
     </div>
   );
 }
@@ -3481,6 +3588,7 @@ function MaintenanceTab({ data, setData }) {
             display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           + Nouvelle visite de maintenance
         </button>
+        <WhatsAppNotify data={data} tab="maintenance" dcComp={null} acComp={null} />
       </div>
     );
   }
@@ -3920,7 +4028,7 @@ function ChantierPanel({ refChantier, onClose }) {
                 {Object.entries(chData.photos).map(function([catKey, items]) {
                   var withUrl = (items||[]).filter(function(p){ return p && p.url; });
                   if (!withUrl.length) return null;
-                  var catLabel = catKey.replace(/_/g, ' ').replace(/\w/g, function(c){ return c.toUpperCase(); });
+                  var catLabel = catKey.split('_').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ');
                   return (
                     <div key={catKey} style={{ marginBottom: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: MUTED,
@@ -4130,6 +4238,132 @@ function LockBanner({ tab, onUnlock, isWGE }) {
             fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
           🔓 Déverrouiller (PM)
         </button>
+      )}
+    </div>
+  );
+}
+
+
+// ── WhatsAppNotify ────────────────────────────────────────────────────────────
+function WhatsAppNotify({ data, tab, dcComp, acComp }) {
+  var [copied, setCopied] = useState(false);
+  var [showPreview, setShowPreview] = useState(false);
+  var [pmPhone, setPmPhone] = useState(null);
+
+  var ref     = data.meta.ref || "—";
+  var client  = data.meta.client || "Client inconnu";
+  var adresse = data.meta.adresse || "";
+  var pm      = data.meta.pm || "";
+
+  // Load PM phone from briefing
+  useEffect(function() {
+    if (!ref || ref === "—") return;
+    supaLoadChantier(ref).then(function(d) {
+      if (d && d.weGreen && d.weGreen.tel) {
+        // Normalize: remove spaces, dots, dashes, leading +
+        var t = d.weGreen.tel.replace(/[\s\.\-\(\)]/g, "").replace(/^\+/, "");
+        setPmPhone(t || null);
+      }
+    });
+  }, [ref]);
+
+  var reportUrl = "https://b-hers.github.io/Rapport-de-chantier-SAV-Maintenance/?ref=" + encodeURIComponent(ref);
+
+  // Status lines
+  var dcStr = data.meta.dcLocked ? "DC verrouille" : (dcComp && dcComp.pct > 0 ? "DC " + dcComp.pct + "%" + (dcComp.nokCount > 0 ? " (" + dcComp.nokCount + " NOK)" : " OK") : "DC non demarre");
+  var acStr = data.meta.acLocked ? "AC verrouille" : (acComp && acComp.pct > 0 ? "AC " + acComp.pct + "%" + (acComp.nokCount > 0 ? " (" + acComp.nokCount + " NOK)" : " OK") : "AC non demarre");
+  var savStr = (data.sav||[]).length > 0 ? "SAV: " + (data.sav||[]).length + " intervention(s)" : "";
+  var maintStr = (data.maintenanceVisites||[]).length > 0 ? "Maintenance: " + (data.maintenanceVisites||[]).length + " visite(s)" : "";
+
+  var tabLabel = {dc:"DC", ac:"AC", sav:"SAV", maintenance:"Maintenance"}[tab] || tab;
+
+  // Build lines array then join safely
+  var msgLines = ["Rapport de Chantier -- " + ref, "Client : " + client];
+  if (adresse) msgLines.push("Adresse : " + adresse);
+  if (pm) msgLines.push("PM : " + pm);
+  msgLines.push("");
+  msgLines.push(dcStr);
+  msgLines.push(acStr);
+  if (savStr) msgLines.push(savStr);
+  if (maintStr) msgLines.push(maintStr);
+  msgLines.push("");
+  msgLines.push("Rapport : " + reportUrl);
+
+  // Join with %0A for WhatsApp URL, newline for display
+  var messageDisplay  = msgLines.join(String.fromCharCode(10));
+  var messageEncoded  = msgLines.map(encodeURIComponent).join("%0A");
+
+  var waUrlPM    = pmPhone ? "https://wa.me/" + pmPhone + "?text=" + messageEncoded : null;
+  var waUrlGroup = WA_GROUP;
+
+  function copyAndOpenGroup() {
+    var openGroup = function() { window.open(waUrlGroup, "_blank"); };
+    try {
+      navigator.clipboard.writeText(messageDisplay).then(function() {
+        setCopied(true);
+        setTimeout(function(){ setCopied(false); }, 4000);
+        openGroup();
+      }).catch(openGroup);
+    } catch(e) { openGroup(); }
+  }
+
+  return (
+    <div id="no-print" style={{ marginTop: 24, background: "#f0fff4",
+      border: "1.5px solid #a8e6c0", borderRadius: 10, padding: "14px 16px" }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: GREEN, marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18 }}>📤</span>
+        Notifier — fin de l'étape {tabLabel}
+      </div>
+
+      {/* Preview toggle */}
+      <button onClick={function(){ setShowPreview(function(v){ return !v; }); }}
+        style={{ fontSize: 11, color: MUTED, background: "none", border: "none",
+          cursor: "pointer", textDecoration: "underline", marginBottom: showPreview ? 8 : 12,
+          padding: 0, minHeight: 0, display: "block" }}>
+        {showPreview ? "▲ Masquer le message" : "▼ Aperçu du message"}
+      </button>
+
+      {showPreview && (
+        <pre style={{ background: WHITE, border: "1px solid " + BORDER, borderRadius: 8,
+          padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#1a1a1a",
+          whiteSpace: "pre-wrap", wordBreak: "break-word",
+          maxHeight: 200, overflowY: "auto", fontFamily: "monospace" }}>
+          {messageDisplay}
+        </pre>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {waUrlPM ? (
+          <a href={waUrlPM} target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7,
+              padding: "10px 18px", background: "#25D366", color: WHITE,
+              borderRadius: 8, fontSize: 13, fontWeight: 700,
+              textDecoration: "none", whiteSpace: "nowrap" }}>
+            💬 PM — {pm.split(" ")[0]}
+          </a>
+        ) : (
+          <div style={{ fontSize: 11, color: "#856404", background: "#fff8e1",
+            borderRadius: 7, padding: "8px 12px", flex: 1 }}>
+            {pmPhone === null && ref !== "—"
+              ? "⏳ Chargement numéro PM…"
+              : "⚠️ Numéro PM non renseigné dans le Briefing de Chantier"}
+          </div>
+        )}
+
+        <button onClick={copyAndOpenGroup}
+          style={{ display: "inline-flex", alignItems: "center", gap: 7,
+            padding: "10px 18px", background: "#128C7E", color: WHITE,
+            border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700,
+            cursor: "pointer", whiteSpace: "nowrap" }}>
+          👥 {copied ? "✅ Copié!" : "Groupe WGE"}
+        </button>
+      </div>
+
+      {copied && (
+        <div style={{ fontSize: 11, color: "#27ae60", marginTop: 8 }}>
+          ✅ Message copié — collez-le dans le groupe WhatsApp qui vient de s'ouvrir
+        </div>
       )}
     </div>
   );
