@@ -1114,10 +1114,11 @@ function PhotoZone({ catKey, label, items, onAdd, onDelete, onUpdate, onReorder,
     const arr = Array.from(files).filter(function(f) { return f.type.startsWith("image/") || f.type === "application/pdf"; });
     const result = [];
     const addedAt = new Date().toISOString();
+    var uploaderName = (window._wgeCurrentUser && window._wgeCurrentUser.name) ? window._wgeCurrentUser.name : "";
     for (let i=0; i<arr.length; i++) {
       const f = arr[i];
       const url = f.type.startsWith("image/") ? await compressImg(f, hiRes) : null;
-      result.push({ name: f.name, url, type: f.type, addedAt: addedAt });
+      result.push({ name: f.name, url, type: f.type, addedAt: addedAt, uploadedBy: uploaderName });
     }
     onAdd(result);
   };
@@ -1127,7 +1128,8 @@ function PhotoZone({ catKey, label, items, onAdd, onDelete, onUpdate, onReorder,
     if (!imgs.length) return; e.preventDefault();
     const result = [];
     const addedAt = new Date().toISOString();
-    for (let i=0; i<imgs.length; i++) { const blob = imgs[i].getAsFile(); result.push({ name: "colle_"+Date.now()+".jpg", url: await compressImg(blob, hiRes), type: blob.type, addedAt: addedAt }); }
+    var uploaderName = (window._wgeCurrentUser && window._wgeCurrentUser.name) ? window._wgeCurrentUser.name : "";
+    for (let i=0; i<imgs.length; i++) { const blob = imgs[i].getAsFile(); result.push({ name: "colle_"+Date.now()+".jpg", url: await compressImg(blob, hiRes), type: blob.type, addedAt: addedAt, uploadedBy: uploaderName }); }
     onAdd(result);
   };
 
@@ -1250,6 +1252,13 @@ function PhotoZone({ catKey, label, items, onAdd, onDelete, onUpdate, onReorder,
                 {item.url
                   ? <img src={item.url} alt={item.name} style={{ width:"100%", height:isMobile?90:75, objectFit:"cover", display:"block", cursor:"pointer" }} onClick={function(e){ e.stopPropagation(); setPreviewIdx(i); setPreviewZoomed(false); }} />
                   : <div style={{ width:"100%", height:isMobile?90:75, display:"flex", alignItems:"center", justifyContent:"center", background:"#f4f4f0", fontSize:11, color:MUTED }}>PDF</div>}
+                {/* Uploader name */}
+                {item.uploadedBy && (
+                  <div style={{ fontSize:10, color:MUTED, textAlign:"center", padding:"3px 4px", background:"#f8f8f6", borderTop:"1px solid "+BORDER, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}
+                    title={"Uploadé par "+item.uploadedBy+(item.addedAt ? " — "+new Date(item.addedAt).toLocaleDateString("fr-BE",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}) : "")}>
+                    👤 {item.uploadedBy.split(" ")[0]}
+                  </div>
+                )}
                 {/* Action bar — row 1: 4 main actions */}
                 <div style={{ display:"flex", borderTop:"1px solid "+BORDER }}>
                   {item.url && <button className="photo-action" title="Agrandir" onClick={function(e){ e.stopPropagation(); setPreviewIdx(i); setPreviewZoomed(false); }}
@@ -4740,8 +4749,8 @@ function App() {
     } catch(e) {}
   }, []);
 
-  // Sync userRef with user state
-  useEffect(function() { userRef.current = user; }, [user]);
+  // Sync userRef with user state + expose globally for PhotoZone
+  useEffect(function() { userRef.current = user; window._wgeCurrentUser = user; }, [user]);
 
   // Vérifier que les tables Supabase existent au démarrage
   useEffect(function() {
