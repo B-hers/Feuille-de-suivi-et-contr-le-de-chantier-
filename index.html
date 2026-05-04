@@ -4776,7 +4776,7 @@ function App() {
         n.meta = Object.assign({}, prev.meta, { ref: urlRef, nom_tache: urlTask });
         return n;
       });
-      loadData(urlRef);
+      loadData(urlRef, urlTask);
     } catch(e) { isLoadingData.current = false; }
   }, []);
 
@@ -4826,19 +4826,25 @@ function App() {
   }, [data, currentSheetId]);
 
   // Load from Supabase — charge la feuille la plus récente pour ce ref
-  async function loadData(ref) {
+  async function loadData(ref, urlTask) {
     if (!ref) return;
+    var taskName = urlTask || (data && data.meta && data.meta.nom_tache) || "";
     setLoading(true);
     isLoadingData.current = true;
     try {
-      var taskParam = (data && data.meta && data.meta.nom_tache) ? "&task=" + encodeURIComponent(data.meta.nom_tache) : "";
+      var taskParam = taskName ? "&task=" + encodeURIComponent(taskName) : "";
       window.history.replaceState(null, "", "?ref=" + encodeURIComponent(ref) + taskParam);
     } catch(e) {}
     var list = await supaLoadList(ref);
     if (list.length > 0) {
       var row = await supaLoadById(list[0].id);
       if (row && row.data) {
-        setData(deepMerge(makeDefaultData(), row.data));
+        setData(function(prev) {
+          var merged = deepMerge(makeDefaultData(), row.data);
+          // Préserver nom_tache depuis l'URL — Supabase ne le stocke pas
+          merged.meta = Object.assign({}, merged.meta, { nom_tache: taskName || prev.meta.nom_tache || "" });
+          return merged;
+        });
         setCurrentSheetId(list[0].id);
         setCurrentSheetLabel(row.label || "");
         prevDataRef.current = null;
@@ -4857,7 +4863,8 @@ function App() {
             ref: ref,
             client: client.nom || "",
             adresse: client.adresse || "",
-            pm: weGreen.manager || ""
+            pm: weGreen.manager || "",
+            nom_tache: taskName || prev.meta.nom_tache || ""
           });
           return n;
         });
