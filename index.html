@@ -7406,7 +7406,7 @@ var WCApp;
 
 // ── PM_DATA We Cover (inclut Olivier Hers) ──
 const PM_DATA = {
-  "Olivier Hers":            { tel: "", email: "" },
+  "Olivier Hers":            { tel: "+32 498 67 18 65", email: "" },
   "Alexander Vos":           { tel: "+32 475 86 92 76", email: "alexander.vos@we-green.be" },
   "Benjamin Hers":           { tel: "+32 479 62 75 11", email: "benjamin.hers@we-green.be" },
   "Cédric":                  { tel: "", email: "" },
@@ -7972,6 +7972,11 @@ function migrateSectionData(sec) {
 function normalize(d) {
   if (!d) return d;
   var out = Object.assign({}, d);
+  // Migration : correction d'une coquille historique dans le nom d'un PM.
+  // Les rapports déjà sauvegardés avec l'ancien nom sont corrigés silencieusement à l'ouverture.
+  if (out.meta && out.meta.pm === "Olivier Herz") {
+    out.meta = Object.assign({}, out.meta, { pm: "Olivier Hers" });
+  }
   // Façade : garantir que chaque section connue existe, migrer si besoin
   var fac = Object.assign({}, d.facade || {});
   fac.sections = Object.assign({}, fac.sections || {});
