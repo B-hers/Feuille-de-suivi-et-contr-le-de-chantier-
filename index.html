@@ -8284,21 +8284,34 @@ function WCProgressPanel({ data, onClose }) {
 
   var totalPhotos = allPhotos.length;
 
+  // ── Journées clôturées, regroupées par date (comme We Green) ──
+  var allJourneesMap = {};
+  (data.journeesCloturees || []).forEach(function(j){
+    if (!j.date) return;
+    if (!allJourneesMap[j.date]) allJourneesMap[j.date] = [];
+    allJourneesMap[j.date].push(j);
+  });
+
   // ── Groupement par jour ──
   function dayKey(addedAt) {
     if (!addedAt) return "Date inconnue";
-    try { return new Date(addedAt).toLocaleDateString("fr-BE", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); }
-    catch(e) { return "Date inconnue"; }
+    try { return addedAt.slice(0, 10); } catch(e) { return "Date inconnue"; }
   }
-  var byDayMap = {}; var dayOrder = [];
-  allPhotos.slice().sort(function(a,b){
-    var ta = a.addedAt ? Date.parse(a.addedAt) : 0, tb = b.addedAt ? Date.parse(b.addedAt) : 0;
-    return tb - ta; // plus récent en premier
-  }).forEach(function(p){
+  function fmtDay(isoDay) {
+    try {
+      var d = new Date(isoDay + "T12:00:00");
+      return d.toLocaleDateString("fr-BE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    } catch(e) { return isoDay; }
+  }
+  var byDayMap = {};
+  allPhotos.forEach(function(p){
     var k = dayKey(p.addedAt);
-    if (!byDayMap[k]) { byDayMap[k] = []; dayOrder.push(k); }
+    if (!byDayMap[k]) byDayMap[k] = [];
     byDayMap[k].push(p);
   });
+  // S'assurer que les jours avec clôture mais sans photo apparaissent aussi
+  Object.keys(allJourneesMap).forEach(function(d){ if (!byDayMap[d]) byDayMap[d] = []; });
+  var dayOrder = Object.keys(byDayMap).sort().reverse(); // plus récent en premier
 
   // ── Groupement par intervenant ──
   var byPersonMap = {}; var personOrder = [];
@@ -8320,11 +8333,29 @@ function WCProgressPanel({ data, onClose }) {
     return order.map(function(k){ return map[k]; });
   }
 
-  function PhotoThumb(p, i) {
+  // ── Grille de photos agrandie, avec intervenant + heure sous chaque image (comme We Green) ──
+  function PhotoGrid(photos) {
     return (
-      <div key={i} onClick={function(){ setZoomPhoto(p); }}
-        style={{ width: 74, height: 58, borderRadius: 6, overflow: "hidden", cursor: "zoom-in", border: "1px solid " + BORDER, flexShrink: 0 }}>
-        {p.url ? <img src={p.url} alt={p.name||""} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 6, padding: "6px 4px" }}>
+        {photos.map(function(p, pi){
+          var time = p.addedAt ? new Date(p.addedAt).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+          return (
+            <div key={pi} style={{ borderRadius: 7, overflow: "hidden", border: "1px solid " + BORDER, background: "#fafaf8" }}>
+              <img src={p.url} alt={p.name || ""}
+                style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", cursor: "zoom-in" }}
+                onClick={function(){ setZoomPhoto(p); }} />
+              <div style={{ padding: "4px 6px", background: "#f0f0ec", lineHeight: 1.4 }}>
+                {p.uploadedBy && (
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#6c3483",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    👤 {p.uploadedBy}
+                  </div>
+                )}
+                {time && <div style={{ fontSize: 9, color: GREEN, fontWeight: 700 }}>{time}</div>}
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -8350,7 +8381,7 @@ function WCProgressPanel({ data, onClose }) {
         </div>
 
         <div style={{ padding: 14 }}>
-          {totalPhotos === 0 && (
+          {totalPhotos === 0 && Object.keys(allJourneesMap).length === 0 && (
             <div style={{ ...CARD, textAlign: "center", color: MUTED, padding: "40px 20px" }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>📭</div>
               Aucune photo enregistrée pour le moment.
@@ -8361,34 +8392,93 @@ function WCProgressPanel({ data, onClose }) {
           {viewMode === "byDay" && dayOrder.map(function(d){
             var photos = byDayMap[d];
             var open = expandedDay === d;
+            var dayJournees = allJourneesMap[d] || [];
             var groups = groupByScopeSection(photos);
+
+            // Intervenants uniques pour badge dans le header
+            var dayUploaders = [];
+            photos.forEach(function(p){ if (p.uploadedBy && dayUploaders.indexOf(p.uploadedBy) < 0) dayUploaders.push(p.uploadedBy); });
+            dayJournees.forEach(function(j){ if (j.auteur && dayUploaders.indexOf(j.auteur) < 0) dayUploaders.push(j.auteur); });
+
             return (
-              <div key={d} style={{ ...CARD, marginBottom: 10, padding: "0.8rem 1rem" }}>
-                <div onClick={function(){ setExpandedDay(open ? null : d); }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", textTransform: "capitalize" }}>
-                  <span style={{ fontSize: 14 }}>📅</span>
-                  <span style={{ flex: 1, fontWeight: 700, color: GREEN, fontSize: 13 }}>{d}</span>
-                  <span style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>{photos.length} photo{photos.length > 1 ? "s" : ""}</span>
-                  <span style={{ color: MUTED, fontSize: 12 }}>{open ? "▾" : "▸"}</span>
+              <div key={d} style={{ marginBottom: 10, borderRadius: 9, border: "1px solid #e8e8e4", overflow: "hidden", background: WHITE }}>
+                {/* Day header */}
+                <div onClick={function(){ setExpandedDay(open ? null : d); }}
+                  style={{ padding: "11px 14px", background: open ? GREEN_LIGHT : "#fafaf8",
+                    cursor: "pointer", userSelect: "none",
+                    display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: open ? GREEN : "#1a1a1a", textTransform: "capitalize" }}>
+                      📅 {fmtDay(d)}
+                    </div>
+                    {dayUploaders.length > 0 && (
+                      <div style={{ fontSize: 11, color: "#6c3483", marginTop: 2, fontWeight: 600 }}>
+                        👥 {dayUploaders.join(", ")}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                      {dayJournees.length > 0 && (
+                        <span style={{ fontSize: 10, background: "#f39c1222", color: "#856404",
+                          borderRadius: 4, padding: "1px 7px", fontWeight: 700, border: "1px solid #f39c1244" }}>
+                          ✅ Journée clôturée
+                        </span>
+                      )}
+                      {groups.map(function(g, gi){
+                        return (
+                          <span key={gi} style={{ fontSize: 10, background: g.scopeColor + "22",
+                            color: g.scopeColor, borderRadius: 4, padding: "1px 7px", fontWeight: 600 }}>
+                            {g.scope} — {g.sectionLabel} ({g.photos.length})
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, color: MUTED }}>{photos.length} photo{photos.length > 1 ? "s" : ""}</span>
+                    <span style={{ color: MUTED, fontSize: 12, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
+                  </div>
                 </div>
+
+                {/* Day content */}
                 {open && (
-                  <div style={{ marginTop: 10 }}>
+                  <div style={{ padding: "10px 14px 14px" }}>
+                    {/* Journées clôturées */}
+                    {dayJournees.map(function(j, ji){
+                      return (
+                        <div key={j.id || ji} style={{ marginBottom: 10, background: "#fffbf0",
+                          border: "1.5px solid #f39c12", borderRadius: 8, padding: "9px 12px" }}>
+                          <div style={{ fontWeight: 700, fontSize: 11, color: "#856404",
+                            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            ✅ Journée clôturée
+                            {j.heure && <span style={{ fontWeight: 400, color: MUTED }}>à {j.heure}</span>}
+                            {j.auteur && <span style={{ color: "#6c3483" }}>· 👤 {j.auteur}</span>}
+                          </div>
+                          {j.note && (
+                            <div style={{ fontSize: 11, color: "#1a1a1a", lineHeight: 1.5, marginTop: 4,
+                              background: WHITE, borderRadius: 5, padding: "5px 8px",
+                              borderLeft: "3px solid #f39c12", whiteSpace: "pre-wrap" }}>{j.note}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Sections avec photos */}
                     {groups.map(function(g, gi){
                       var gKey = d + "|" + gi;
                       var gOpen = expandedGroup === gKey;
                       return (
-                        <div key={gi} style={{ marginBottom: 6 }}>
+                        <div key={gi} style={{ marginBottom: 8 }}>
                           <div onClick={function(){ setExpandedGroup(gOpen ? null : gKey); }}
-                            style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "6px 8px", background: WHITE, borderRadius: 6, border: "1px solid " + BORDER }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: g.scopeColor }}>{g.scopeIcon} {g.scope}</span>
-                            <span style={{ fontSize: 11, color: MUTED }}>{g.sectionIcon} {g.sectionLabel}</span>
-                            <span style={{ flex: 1 }} />
-                            <span style={{ fontSize: 11, color: MUTED }}>{g.photos.length}</span>
+                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                              borderRadius: 7, cursor: "pointer",
+                              background: gOpen ? g.scopeColor + "12" : "#f8f8f6",
+                              border: "1px solid " + (gOpen ? g.scopeColor + "44" : "#e8e8e4") }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: g.scopeColor, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontWeight: 600, fontSize: 12 }}>{g.scope} — {g.sectionLabel}</span>
+                            <span style={{ fontSize: 11, color: g.scopeColor, fontWeight: 700 }}>{g.photos.length} photo{g.photos.length > 1 ? "s" : ""}</span>
+                            <span style={{ fontSize: 10, color: MUTED, transform: gOpen ? "rotate(180deg)" : "none", transition: "0.2s" }}>▼</span>
                           </div>
-                          {gOpen && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, paddingLeft: 4 }}>
-                              {g.photos.map(PhotoThumb)}
-                            </div>
-                          )}
+                          {gOpen && PhotoGrid(g.photos)}
                         </div>
                       );
                     })}
@@ -8404,32 +8494,32 @@ function WCProgressPanel({ data, onClose }) {
             var open = expandedPerson === person;
             var groups = groupByScopeSection(photos);
             return (
-              <div key={person} style={{ ...CARD, marginBottom: 10, padding: "0.8rem 1rem" }}>
-                <div onClick={function(){ setExpandedPerson(open ? null : person); }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <div key={person} style={{ marginBottom: 10, borderRadius: 9, border: "1px solid #e8e8e4", overflow: "hidden", background: WHITE }}>
+                <div onClick={function(){ setExpandedPerson(open ? null : person); }}
+                  style={{ padding: "11px 14px", background: open ? GREEN_LIGHT : "#fafaf8", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 14 }}>{person === "Intervenant inconnu" ? "❔" : "👤"}</span>
-                  <span style={{ flex: 1, fontWeight: 700, color: GREEN, fontSize: 13 }}>{person}</span>
-                  <span style={{ fontSize: 11, color: MUTED, fontWeight: 500 }}>{photos.length} photo{photos.length > 1 ? "s" : ""}</span>
-                  <span style={{ color: MUTED, fontSize: 12 }}>{open ? "▾" : "▸"}</span>
+                  <span style={{ flex: 1, fontWeight: 700, color: open ? GREEN : "#1a1a1a", fontSize: 13 }}>{person}</span>
+                  <span style={{ fontSize: 12, color: MUTED, fontWeight: 500 }}>{photos.length} photo{photos.length > 1 ? "s" : ""}</span>
+                  <span style={{ color: MUTED, fontSize: 12, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</span>
                 </div>
                 {open && (
-                  <div style={{ marginTop: 10 }}>
+                  <div style={{ padding: "10px 14px 14px" }}>
                     {groups.map(function(g, gi){
                       var gKey = person + "|" + gi;
                       var gOpen = expandedGroup === gKey;
                       return (
-                        <div key={gi} style={{ marginBottom: 6 }}>
+                        <div key={gi} style={{ marginBottom: 8 }}>
                           <div onClick={function(){ setExpandedGroup(gOpen ? null : gKey); }}
-                            style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "6px 8px", background: WHITE, borderRadius: 6, border: "1px solid " + BORDER }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: g.scopeColor }}>{g.scopeIcon} {g.scope}</span>
-                            <span style={{ fontSize: 11, color: MUTED }}>{g.sectionIcon} {g.sectionLabel}</span>
-                            <span style={{ flex: 1 }} />
-                            <span style={{ fontSize: 11, color: MUTED }}>{g.photos.length}</span>
+                            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
+                              borderRadius: 7, cursor: "pointer",
+                              background: gOpen ? g.scopeColor + "12" : "#f8f8f6",
+                              border: "1px solid " + (gOpen ? g.scopeColor + "44" : "#e8e8e4") }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: g.scopeColor, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontWeight: 600, fontSize: 12 }}>{g.scope} — {g.sectionLabel}</span>
+                            <span style={{ fontSize: 11, color: g.scopeColor, fontWeight: 700 }}>{g.photos.length} photo{g.photos.length > 1 ? "s" : ""}</span>
+                            <span style={{ fontSize: 10, color: MUTED, transform: gOpen ? "rotate(180deg)" : "none", transition: "0.2s" }}>▼</span>
                           </div>
-                          {gOpen && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, paddingLeft: 4 }}>
-                              {g.photos.map(PhotoThumb)}
-                            </div>
-                          )}
+                          {gOpen && PhotoGrid(g.photos)}
                         </div>
                       );
                     })}
@@ -8445,7 +8535,7 @@ function WCProgressPanel({ data, onClose }) {
       {zoomPhoto && (
         <div onClick={function(){ setZoomPhoto(null); }}
           style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,0.88)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <img src={zoomPhoto.url} alt={zoomPhoto.name||""} style={{ maxWidth: "92vw", maxHeight: "78vh", objectFit: "contain", borderRadius: 6 }} />
+          <img src={zoomPhoto.url} alt={zoomPhoto.name || ""} style={{ maxWidth: "92vw", maxHeight: "78vh", objectFit: "contain", borderRadius: 6 }} />
           <div style={{ color: WHITE, fontSize: 12, marginTop: 12, textAlign: "center" }}>
             {zoomPhoto.uploadedBy && <div>👤 {zoomPhoto.uploadedBy}</div>}
             {zoomPhoto.addedAt && <div style={{ opacity: 0.7 }}>{new Date(zoomPhoto.addedAt).toLocaleString("fr-BE")}</div>}
@@ -8458,9 +8548,6 @@ function WCProgressPanel({ data, onClose }) {
   );
 }
 
-/* ── Clôture de journée (porté de We Green Rapport) ──
-   À remplir en fin de journée. Trace dans le rapport l'avancement consolidé
-   du jour, avec auteur, date, heure et commentaire libre. */
 function CloturJourneeBlock({ journees, setJournees, currentUser, onLogged }) {
   var [showForm, setShowForm] = useState(false);
   var [expanded, setExpanded] = useState(null);
@@ -9412,11 +9499,16 @@ function App() {
               }}
             />
 
-            {/* Notifier le PM — visible dès qu'une clôture existe pour aujourd'hui */}
+            {/* Notifier le PM — toujours visible dès qu'un rapport est chargé,
+                utilise la clôture la plus récente (peu importe sa date) si elle existe */}
             {ref && (function(){
-              var today = todayISO();
-              var todayJournee = (data.journeesCloturees || []).find(function(j){ return j.date === today; });
-              return todayJournee ? <WCWhatsAppNotify data={data} refChantier={ref} journeeDuJour={todayJournee} /> : null;
+              var journees = data.journeesCloturees || [];
+              var derniereJournee = journees.length
+                ? journees.slice().sort(function(a,b){
+                    return ((b.date||"")+" "+(b.heure||"")).localeCompare((a.date||"")+" "+(a.heure||""));
+                  })[0]
+                : null;
+              return <WCWhatsAppNotify data={data} refChantier={ref} journeeDuJour={derniereJournee} />;
             })()}
 
             {/* Remarques générales */}
