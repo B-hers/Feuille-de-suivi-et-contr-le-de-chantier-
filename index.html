@@ -748,8 +748,8 @@ const DC_SECTIONS = [
       { key: "nbPV", label: "Nombre de PV posés", placeholder: "ex: 24" },
     ],
     photoCats: [
-      { key: "vue_generale_pv", label: "Vue générale toiture terminée (panneaux posés)" },
-      { key: "drone_ph", label: "📡 Vue drone (si disponible)" },
+      { key: "vue_generale_pv", label: "Vue générale toiture terminée (panneaux posés)", hiRes: true },
+      { key: "drone_ph", label: "📡 Vue drone (si disponible)", hiRes: true },
     ]
   },
   {
@@ -7404,9 +7404,9 @@ var WCApp;
   var useCallback= React.useCallback;
   var useMemo    = React.useMemo;
 
-// ── PM_DATA We Cover (inclut Olivier Herz) ──
+// ── PM_DATA We Cover (inclut Olivier Hers) ──
 const PM_DATA = {
-  "Olivier Herz":            { tel: "", email: "" },
+  "Olivier Hers":            { tel: "", email: "" },
   "Alexander Vos":           { tel: "+32 475 86 92 76", email: "alexander.vos@we-green.be" },
   "Benjamin Hers":           { tel: "+32 479 62 75 11", email: "benjamin.hers@we-green.be" },
   "Cédric":                  { tel: "", email: "" },
@@ -8651,6 +8651,100 @@ function CloturJourneeBlock({ journees, setJournees, currentUser, onLogged }) {
   );
 }
 
+/* ── Notification WhatsApp au PM — message de clôture + lien du rapport ── */
+function WCWhatsAppNotify({ data, refChantier, journeeDuJour }) {
+  var [copied, setCopied] = useState(false);
+  var [showPreview, setShowPreview] = useState(false);
+
+  var client  = data.meta.client || "Client inconnu";
+  var adresse = data.meta.adresseChantier || "";
+  var pm      = data.meta.pm || "";
+  var pmTel   = (PM_DATA[pm] && PM_DATA[pm].tel) ? PM_DATA[pm].tel.replace(/[\s.\-()]/g, "").replace(/^\+/, "") : null;
+
+  var reportUrl = "https://b-hers.github.io/Rapport-de-chantier-SAV-Maintenance/?ref=" + encodeURIComponent(refChantier) + "&app=wcover";
+
+  var typeStr = [
+    data.typeChantier && data.typeChantier.facade ? "Façade" : null,
+    data.typeChantier && data.typeChantier.toiture ? "Toiture" + (((data.toitures||[]).length>1) ? " ×" + data.toitures.length : "") : null
+  ].filter(Boolean).join(" + ") || "—";
+
+  var msgLines = ["Rapport We Cover — " + refChantier, "Client : " + client];
+  if (adresse) msgLines.push("Adresse : " + adresse);
+  if (pm) msgLines.push("PM : " + pm);
+  msgLines.push("Type : " + typeStr);
+  msgLines.push("");
+  if (journeeDuJour) {
+    msgLines.push("📅 Journée clôturée" + (journeeDuJour.auteur ? " par " + journeeDuJour.auteur : ""));
+    if (journeeDuJour.note) msgLines.push(journeeDuJour.note);
+    msgLines.push("");
+  }
+  msgLines.push("Rapport : " + reportUrl);
+
+  var messageDisplay = msgLines.join(String.fromCharCode(10));
+  var messageEncoded = msgLines.map(encodeURIComponent).join("%0A");
+  var waUrlPM = pmTel ? "https://wa.me/" + pmTel + "?text=" + messageEncoded : null;
+
+  function copyMessage() {
+    try {
+      navigator.clipboard.writeText(messageDisplay).then(function(){
+        setCopied(true);
+        setTimeout(function(){ setCopied(false); }, 4000);
+      });
+    } catch(e) {}
+  }
+
+  return (
+    <div id="no-print" style={{ marginTop: 10, marginBottom: 8, background: "#f0fff4",
+      border: "1.5px solid #a8e6c0", borderRadius: 10, padding: "14px 16px" }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: GREEN, marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18 }}>📤</span>
+        Notifier le PM — {journeeDuJour ? "journée clôturée" : "message rapport"}
+      </div>
+
+      <button onClick={function(){ setShowPreview(function(v){ return !v; }); }}
+        style={{ fontSize: 11, color: MUTED, background: "none", border: "none",
+          cursor: "pointer", textDecoration: "underline", marginBottom: showPreview ? 8 : 12,
+          padding: 0, minHeight: 0, display: "block" }}>
+        {showPreview ? "▲ Masquer le message" : "▼ Aperçu du message"}
+      </button>
+
+      {showPreview && (
+        <pre style={{ background: WHITE, border: "1px solid " + BORDER, borderRadius: 8,
+          padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#1a1a1a",
+          whiteSpace: "pre-wrap", wordBreak: "break-word",
+          maxHeight: 200, overflowY: "auto", fontFamily: "monospace" }}>
+          {messageDisplay}
+        </pre>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {waUrlPM ? (
+          <a href={waUrlPM} target="_blank" rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7,
+              padding: "10px 18px", background: "#25D366", color: WHITE,
+              borderRadius: 8, fontSize: 13, fontWeight: 700,
+              textDecoration: "none", whiteSpace: "nowrap" }}>
+            💬 PM — {pm.split(" ")[0]}
+          </a>
+        ) : (
+          <div style={{ fontSize: 11, color: "#856404", background: "#fff8e1",
+            borderRadius: 7, padding: "8px 12px", flex: 1 }}>
+            ⚠️ {pm ? "Numéro non renseigné pour " + pm : "Sélectionnez un Project Manager pour activer l'envoi direct"}
+          </div>
+        )}
+        <button onClick={copyMessage}
+          style={{ display: "inline-flex", alignItems: "center", gap: 7,
+            padding: "10px 18px", background: "#128C7E", color: WHITE,
+            border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700,
+            cursor: "pointer", whiteSpace: "nowrap" }}>
+          📋 {copied ? "✅ Copié!" : "Copier le message"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Panneau historique : versions (snapshots) + audit log ── */
 function HistoryPanel({ refChantier, onRestore, onClose, currentUser }) {
   var [tab, setTab] = useState("versions");
@@ -8766,6 +8860,8 @@ function App() {
   var [pdfLoading, setPdfLoading] = useState(false);
   var firstLoad = useRef(true);
   var rowIdRef = useRef(null); // id Supabase (feuilles_controle) de la ligne We Cover active
+  var isSavingRef = useRef(false); // mutex anti-sauvegardes concurrentes
+  var saveTimerRef = useRef(null); // timer du debounce, pour pouvoir l'annuler/forcer
   var [isMobileView, setIsMobileView] = useState(function(){
     try { return window.innerWidth <= 680; } catch(e) { return false; }
   });
@@ -8874,17 +8970,31 @@ function App() {
     if (r) loadRef(r, urlTask);
   }, []);
 
-  /* Autosave debounce 2s + snapshot horodaté toutes les 15 minutes après une modification */
-  useEffect(function(){
-    if (!ref || !loaded) return;
-    if (firstLoad.current) { firstLoad.current = false; return; }
+  // ── Sauvegarde robuste : mutex anti-concurrence + flush forcé en arrière-plan ──
+  // Sur mobile, prendre une photo fait passer l'onglet en arrière-plan (ouverture
+  // de l'appareil photo natif) ; sans ce mécanisme, un navigateur agressif (Safari iOS
+  // notamment) peut suspendre l'onglet avant que le debounce n'ait eu le temps de se
+  // déclencher, perdant silencieusement la photo. On force donc la sauvegarde dès que
+  // la page passe en arrière-plan, se décharge, ou avant fermeture.
+  var latestDataRef = useRef(data);
+  useEffect(function(){ latestDataRef.current = data; }, [data]);
+  var refValueRef = useRef(ref);
+  useEffect(function(){ refValueRef.current = ref; }, [ref]);
+
+  async function flushSave() {
+    var r = refValueRef.current;
+    var d = latestDataRef.current;
+    if (!r || !loaded) return;
+    if (isSavingRef.current) return; // une sauvegarde est déjà en cours, elle prendra le dernier state via latestDataRef
+    isSavingRef.current = true;
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
     setSaveStatus("saving");
-    var t = setTimeout(async function(){
-      var up = await wcUploadAllPhotos(ref, data);
-      var toSave = data;
-      if (up.changed) { toSave = up.data; setData(up.data); }
-      try { localStorage.setItem("wc_rapport_" + ref, JSON.stringify(toSave)); } catch(e){}
-      var saveRes = await wcSave(ref, toSave, rowIdRef.current);
+    try {
+      var up = await wcUploadAllPhotos(r, latestDataRef.current);
+      var toSave = latestDataRef.current;
+      if (up.changed) { toSave = up.data; setData(up.data); latestDataRef.current = up.data; }
+      try { localStorage.setItem("wc_rapport_" + r, JSON.stringify(toSave)); } catch(e){}
+      var saveRes = await wcSave(r, toSave, rowIdRef.current);
       if (saveRes.ok && saveRes.id) rowIdRef.current = saveRes.id;
       setSaveStatus(saveRes.ok ? "saved" : "local");
       if (saveRes.ok) setLastSavedAt(new Date());
@@ -8892,12 +9002,49 @@ function App() {
       // Auto-snapshot : au max un toutes les 15 minutes
       var now = Date.now();
       if (saveRes.ok && (now - lastSnapshotAt) > 15*60*1000) {
-        var snapOk = await wcSaveSnapshot(ref, toSave, user, "auto");
+        var snapOk = await wcSaveSnapshot(r, toSave, user, "auto");
         if (snapOk) setLastSnapshotAt(now);
       }
-    }, 2000);
-    return function(){ clearTimeout(t); };
+    } catch(e) {
+      setSaveStatus("local");
+    } finally {
+      isSavingRef.current = false;
+    }
+  }
+
+  /* Autosave debounce court (1.2s) — réactif pour limiter la fenêtre de risque
+     si l'app passe en arrière-plan juste après une modification. */
+  useEffect(function(){
+    if (!ref || !loaded) return;
+    if (firstLoad.current) { firstLoad.current = false; return; }
+    setSaveStatus("saving");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(function(){ saveTimerRef.current = null; flushSave(); }, 1200);
+    return function(){ if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; } };
   }, [data, ref, loaded]);
+
+  /* Filet de sécurité : force la sauvegarde dès que l'onglet passe en arrière-plan,
+     se décharge, ou avant fermeture — évite la perte de photo sur chantier. */
+  useEffect(function(){
+    function onVisibilityChange() { if (document.visibilityState === "hidden") flushSave(); }
+    function onPageHide() { flushSave(); }
+    function onBeforeUnload(e) {
+      flushSave();
+      if (saveTimerRef.current || isSavingRef.current) {
+        e.preventDefault();
+        e.returnValue = "Des modifications sont en cours de sauvegarde. Voulez-vous vraiment quitter ?";
+        return e.returnValue;
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return function(){
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, []);
 
   async function saveSnapshotNow(label) {
     if (!ref) return;
@@ -9264,6 +9411,13 @@ function App() {
                 if (ref && user) wcLogAudit(ref, user, "cloture_journee", entry.date + (entry.note ? " · " + entry.note.slice(0,60) : ""));
               }}
             />
+
+            {/* Notifier le PM — visible dès qu'une clôture existe pour aujourd'hui */}
+            {ref && (function(){
+              var today = todayISO();
+              var todayJournee = (data.journeesCloturees || []).find(function(j){ return j.date === today; });
+              return todayJournee ? <WCWhatsAppNotify data={data} refChantier={ref} journeeDuJour={todayJournee} /> : null;
+            })()}
 
             {/* Remarques générales */}
             <Card icon="📝" title="Remarques générales" defaultOpen={false}>
@@ -9846,16 +10000,52 @@ function App() {
     }
     var client = chantierData.client || {};
     var weGreen = chantierData.weGreen || {};
+
+    // ── Strings planifiées dans le Briefing (structure sites[].pvInstallations[],
+    //    avec fallback ancien format installations[]) ──
+    //    Ne pré-remplit QUE si le rapport n'a pas encore de strings saisies,
+    //    pour ne jamais écraser un travail déjà fait sur chantier.
+    var briefingStrings = [];
+    var pvArr = [];
+    if (chantierData.sites && chantierData.sites.length) {
+      chantierData.sites.forEach(function(site){ (site.pvInstallations||[]).forEach(function(inst){ pvArr.push(inst); }); });
+    } else if (chantierData.installations) {
+      pvArr = chantierData.installations;
+    }
+    pvArr.forEach(function(inst){ (inst.strings||[]).forEach(function(s){ briefingStrings.push(s); }); });
+
+    var stringsMsg = "";
     setData(function(prev) {
-      return Object.assign({}, prev, {
+      var next = Object.assign({}, prev, {
         meta: Object.assign({}, prev.meta, {
           client: client.nom || prev.meta.client,
           adresse: client.adresse || prev.meta.adresse,
           pm: weGreen.manager || prev.meta.pm
         })
       });
+
+      var currentNb = parseInt((prev.dc && prev.dc.items && prev.dc.items.strings && prev.dc.items.strings.nbStrings) || 0);
+      var alreadyHasStrings = currentNb > 0 || Object.keys((prev.dc && prev.dc.stringNames) || {}).length > 0;
+
+      if (briefingStrings.length > 0 && !alreadyHasStrings) {
+        var newNames = {}, newPVCounts = {};
+        briefingStrings.forEach(function(s, i){
+          var orientLabel = s.orient === "Libre" ? (s.orientLibre || "") : (s.orient || "");
+          newNames[i] = ["Ond. " + (s.onduleur || "?"), orientLabel].filter(Boolean).join(" — ");
+          newPVCounts[i] = s.count || "";
+        });
+        next.dc = Object.assign({}, next.dc, {
+          items: Object.assign({}, next.dc.items, {
+            strings: Object.assign({}, next.dc.items.strings, { nbStrings: String(briefingStrings.length) })
+          }),
+          stringNames: newNames,
+          stringPVCounts: newPVCounts
+        });
+        stringsMsg = " + " + briefingStrings.length + " string" + (briefingStrings.length>1?"s":"") + " importée" + (briefingStrings.length>1?"s":"");
+      }
+      return next;
     });
-    setPrefillMsg("✅ Importé depuis le Briefing — " + (client.nom||ref));
+    setPrefillMsg("✅ Importé depuis le Briefing — " + (client.nom||ref) + stringsMsg);
     setTimeout(function(){ setPrefillMsg(""); }, 5000);
   }
 
