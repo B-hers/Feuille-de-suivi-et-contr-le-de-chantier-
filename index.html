@@ -6255,13 +6255,18 @@ function AsBuiltViewer({ wgeUser }) {
   var params = new URLSearchParams(window.location.search);
   var ref     = params.get("ref") || "";
   var sheetId = params.get("sheet") || null;
-
-  var params = new URLSearchParams(window.location.search);
   var isAsBuiltMode = params.get("asbuilt") === "1";
   var forceClientPreview = params.get("preview") === "client";
+
+  // Bascule temporaire déclenchée par le bouton "Imprimer PDF" en mode WGE :
+  // force la vue client le temps de l'impression, puis revient automatiquement
+  // en mode édition à la fermeture de la boîte de dialogue d'impression.
+  var [forcePrintClient, setForcePrintClient] = useState(false);
+
   // isViewerWGE : vrai si ?asbuilt=1 OU si session WGE en localStorage
   // Double vérification pour couvrir tous les cas (URL + session)
   var isViewerWGE = (function() {
+    if (forcePrintClient) return false;   // priorité absolue pendant l'impression forcée
     if (forceClientPreview) return false; // ?preview=client → toujours vue client
     if (isAsBuiltMode) return true;       // ?asbuilt=1 → toujours WGE (jamais dans les liens clients)
     try {
@@ -6270,6 +6275,22 @@ function AsBuiltViewer({ wgeUser }) {
         (u.email && (u.email.endsWith("@we-green.be") || u.email.endsWith("@we-green.fr")))));
     } catch(e) { return false; }
   })();
+
+  // Une fois React re-rendu en mode client (forcePrintClient=true), on déclenche
+  // l'impression après un court délai pour laisser le DOM se stabiliser.
+  useEffect(function(){
+    if (!forcePrintClient) return;
+    var t = setTimeout(function(){ window.print(); }, 150);
+    return function(){ clearTimeout(t); };
+  }, [forcePrintClient]);
+
+  // Dès que la boîte de dialogue d'impression se ferme (imprimé ou annulé),
+  // on repasse automatiquement en mode édition WGE.
+  useEffect(function(){
+    function onAfterPrint(){ setForcePrintClient(false); }
+    window.addEventListener("afterprint", onAfterPrint);
+    return function(){ window.removeEventListener("afterprint", onAfterPrint); };
+  }, []);
 
   var [sheets, setSheets]       = useState([]);
   var [orderedItems, setOrdered] = useState([]);
@@ -6919,6 +6940,7 @@ function AsBuiltViewer({ wgeUser }) {
         @media print {
           .ab-no-print { display:none!important; }
           .ab-page { break-inside:avoid; }
+          .ab-annexe-title { break-inside:avoid; break-after:avoid; }
           /* Grille 2 colonnes en impression */
           .ab-photo-grid { display:grid!important; grid-template-columns:repeat(2,1fr)!important; gap:8px!important; }
           /* Chaque photo : bloc indivisible */
@@ -7030,7 +7052,8 @@ function AsBuiltViewer({ wgeUser }) {
                   borderRadius:6, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 🔗 Lien client
               </button>
-              <button onClick={function(){ window.print(); }}
+              <button onClick={function(){ setForcePrintClient(true); }}
+                title="Imprime exactement ce que voit le client, quel que soit votre mode d'affichage actuel"
                 style={{ background:"rgba(255,255,255,0.15)", border:"1px solid rgba(255,255,255,0.3)", color:"#fff",
                   borderRadius:6, padding:"7px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 🖨️ Imprimer PDF
@@ -7139,6 +7162,28 @@ function AsBuiltViewer({ wgeUser }) {
             {/* Informations techniques */}
             <TechInfoPanel />
 
+            {/* Documents administratifs (PDF) — affichés en premier, avant les photos */}
+            {adminSecs.length > 0 && (
+              <div className="ab-page" style={{ background:"#fff", borderRadius:12, border:"1px solid #d7bde2", padding:"20px", marginBottom:16 }}>
+                <div style={{ fontWeight:700, fontSize:15, color:"#8e44ad", marginBottom:14,
+                  paddingBottom:8, borderBottom:"2px solid #d7bde2" }}>📂 Documents administratifs</div>
+                {adminSecs.map(function(s, i){ return (
+                  <div key={i} style={{ marginBottom:16 }}>
+                    <div style={{ fontWeight:600, fontSize:13, color:"#8e44ad", marginBottom:8 }}>{s.label}</div>
+                    {s.docs.map(function(d, j){ return <DocCard key={j} doc={d} isWGE={isViewerWGE} />; })}
+                  </div>
+                );})}
+              </div>
+            )}
+
+            {/* Séparateur Annexes — marque le début des photos, après les documents */}
+            {(dcSecs.length > 0 || acSecs.length > 0 || genPh.length > 0) && (
+              <div className="ab-annexe-title" style={{ display:"flex", alignItems:"center", gap:10, margin:"22px 0 14px" }}>
+                <span style={{ fontSize:12, fontWeight:700, color:"#888", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap" }}>📎 Annexes photographiques</span>
+                <span style={{ flex:1, borderTop:"1.5px solid #e0e0dc" }} />
+              </div>
+            )}
+
             {/* DC */}
             {dcSecs.length > 0 && (
               <div className="ab-page" style={{ background:"#fff", borderRadius:12, border:"1px solid #aed6f1", padding:"20px", marginBottom:16 }}>
@@ -7163,20 +7208,6 @@ function AsBuiltViewer({ wgeUser }) {
                 <div style={{ fontWeight:700, fontSize:15, color:"#6c3483", marginBottom:14,
                   paddingBottom:8, borderBottom:"2px solid #e8e8e4" }}>🏗️ Photos générales</div>
                 <PhotoGrid photos={genPh} isWGE={isViewerWGE} hiddenPhotos={hiddenPhotos} onTogglePhoto={onTogglePhoto} />
-              </div>
-            )}
-
-            {/* Admin */}
-            {adminSecs.length > 0 && (
-              <div className="ab-page" style={{ background:"#fff", borderRadius:12, border:"1px solid #d7bde2", padding:"20px", marginBottom:16 }}>
-                <div style={{ fontWeight:700, fontSize:15, color:"#8e44ad", marginBottom:14,
-                  paddingBottom:8, borderBottom:"2px solid #d7bde2" }}>📂 Documents administratifs</div>
-                {adminSecs.map(function(s, i){ return (
-                  <div key={i} style={{ marginBottom:16 }}>
-                    <div style={{ fontWeight:600, fontSize:13, color:"#8e44ad", marginBottom:8 }}>{s.label}</div>
-                    {s.docs.map(function(d, j){ return <DocCard key={j} doc={d} isWGE={isViewerWGE} />; })}
-                  </div>
-                );})}
               </div>
             )}
 
