@@ -2486,6 +2486,64 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
       return n;
     });
   }
+  // Import des strings depuis le Briefing de Chantier — ne remplit QUE les champs
+  // vides côté rapport (nom, nb PV, tension). Ne réduit jamais le nombre de strings,
+  // ne touche jamais aux photos déjà prises sur chantier.
+  async function importStringsFromBriefing() {
+    var briefingData = await supaLoadChantier(data.meta.ref);
+    if (!briefingData) { alert("Aucun Briefing trouvé pour cette référence chantier."); return; }
+
+    var pvArr = [];
+    if (briefingData.sites && briefingData.sites.length) {
+      briefingData.sites.forEach(function(site){ (site.pvInstallations||[]).forEach(function(inst){ pvArr.push(inst); }); });
+    } else if (briefingData.installations) {
+      pvArr = briefingData.installations;
+    }
+    var briefingStrings = [];
+    pvArr.forEach(function(inst){ (inst.strings||[]).forEach(function(s){ briefingStrings.push(s); }); });
+
+    if (briefingStrings.length === 0) { alert("Aucun string trouvé dans le Briefing pour ce chantier."); return; }
+
+    var filledCount = 0;
+    var preservedCount = 0;
+
+    setData(function(prev) {
+      var n = Object.assign({}, prev);
+      n.dc = Object.assign({}, prev.dc);
+
+      var curNames  = Object.assign({}, prev.dc.stringNames||{});
+      var curCounts = Object.assign({}, prev.dc.stringPVCounts||{});
+      var curTens   = Object.assign({}, prev.dc.stringTensions||{});
+      var curNb     = parseInt(((prev.dc.items||{}).strings||{}).nbStrings) || 0;
+
+      briefingStrings.forEach(function(s, i) {
+        var orientLabel = s.orient === "Libre" ? (s.orientLibre||"") : (s.orient||"");
+        var briefName = (s.name && s.name.trim()) ? s.name.trim()
+          : ["Ond. "+(s.onduleur||"?"), orientLabel].filter(Boolean).join(" — ");
+        var briefCount    = s.count   || "";
+        var briefTension  = s.tension || "";
+
+        // Ne remplit que les champs VIDES — ne jamais écraser une donnée déjà saisie sur chantier
+        if (curNames[i])  { preservedCount++; } else if (briefName)    { curNames[i]  = briefName;  filledCount++; }
+        if (!curCounts[i] && briefCount)   curCounts[i] = briefCount;
+        if (!curTens[i]   && briefTension) curTens[i]   = briefTension;
+      });
+
+      // nbStrings : jamais réduit, éventuellement augmenté si le Briefing en propose plus
+      var newNb = Math.max(curNb, briefingStrings.length);
+
+      n.dc.stringNames    = curNames;
+      n.dc.stringPVCounts = curCounts;
+      n.dc.stringTensions = curTens;
+      n.dc.items = Object.assign({}, prev.dc.items);
+      n.dc.items.strings = Object.assign({}, prev.dc.items.strings, { nbStrings: String(newNb) });
+
+      return n;
+    });
+
+    alert("✅ " + briefingStrings.length + " string(s) trouvée(s) dans le Briefing.\n" +
+      filledCount + " complétée(s), " + preservedCount + " déjà renseignée(s) préservée(s) telles quelles.\nLes photos n'ont pas été touchées.");
+  }
   function setStringTension(idx, val) {
     setData(function(prev){
       var n = Object.assign({}, prev); n.dc = Object.assign({}, prev.dc);
@@ -2555,8 +2613,18 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
             {/* Photos par string (section strings uniquement) */}
             {s.hasStringPhotos && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: DC_COLOR, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, marginTop: 4 }}>
-                  📸 Photos par string
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: 8, marginTop: 4, flexWrap:"wrap", gap:8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: DC_COLOR, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    📸 Photos par string
+                  </div>
+                  {isWGE && (
+                    <button onClick={importStringsFromBriefing}
+                      title="Complète les strings vides avec les données du Briefing — ne modifie jamais les strings déjà renseignées"
+                      style={{ fontSize:11, color:DC_COLOR, background:DC_LIGHT, border:"1px solid "+DC_BORDER,
+                        borderRadius:6, padding:"5px 10px", fontWeight:600, cursor:"pointer" }}>
+                      📥 Importer les strings du Briefing
+                    </button>
+                  )}
                 </div>
                 <StringsSection
                   nbStrings={sData["nbStrings"]}
@@ -6037,10 +6105,24 @@ function CloturJourneeBlock({ tab, tabColor, journees, setJournees, locked }) {
 
 // ── generateAsBuilt ──────────────────────────────────────────────────────────
 // ── Helpers AS-Built partagés (global scope) ────────────────────────────────
-function buildPhotoLabel(catKey) {
+function buildPhotoLabel(catKey, stringsMeta) {
   if (/^ac_app_(\d+)$/.test(catKey))    return "Appareil / Onduleur / Borne " + (parseInt(catKey.replace("ac_app_",""))+1);
   if (/^ac_tab_(\d+)$/.test(catKey))    return "Tableau électrique " + (parseInt(catKey.replace("ac_tab_",""))+1);
-  if (/^string_ph_(\d+)$/.test(catKey)) return "String " + (parseInt(catKey.replace("string_ph_",""))+1);
+  if (/^string_ph_(\d+)$/.test(catKey)) {
+    var idx = parseInt(catKey.replace("string_ph_",""));
+    var base = "String " + (idx+1);
+    if (stringsMeta) {
+      var nm = stringsMeta.stringNames && stringsMeta.stringNames[idx];
+      var pv = stringsMeta.stringPVCounts && stringsMeta.stringPVCounts[idx];
+      var tv = stringsMeta.stringTensions && stringsMeta.stringTensions[idx];
+      var parts = [];
+      if (nm) parts.push(nm);
+      if (pv) parts.push(pv + " PV");
+      if (tv) parts.push(tv + (String(tv).match(/v$/i) ? "" : "V"));
+      if (parts.length) return base + " — " + parts.join(" · ");
+    }
+    return base;
+  }
   var m = { ac_pre_general:"Pré-chantier — Vue générale", ac_pre_tgbt:"Pré-chantier — TGBT",
     ac_pre_compteur:"Pré-chantier — Compteur", ac_post_tubages:"Post-chantier — Tubages",
     ac_post_tgbt:"Post-chantier — TGBT", ac_config_ph:"Configuration onduleur",
@@ -6048,7 +6130,7 @@ function buildPhotoLabel(catKey) {
   if (m[catKey]) return m[catKey];
   return catKey.replace(/^(ac|dc)_/,"").replace(/_ph$/,"").replace(/_/g," ");
 }
-function collectAllSectionPhotos(photosMap, sectionDefs, tabLabel) {
+function collectAllSectionPhotos(photosMap, sectionDefs, tabLabel, stringsMeta) {
   var sections = []; var coveredKeys = new Set();
   (sectionDefs||[]).forEach(function(s) {
     (s.photoCats||[]).forEach(function(c) {
@@ -6062,7 +6144,7 @@ function collectAllSectionPhotos(photosMap, sectionDefs, tabLabel) {
     if (coveredKeys.has(catKey)) return;
     var photos = ((photosMap||{})[catKey]||[]).filter(function(p){ return p&&p.url; });
     if (!photos.length) return;
-    sections.push({ tab:tabLabel, section:buildPhotoLabel(catKey), cat:buildPhotoLabel(catKey), photos:photos });
+    sections.push({ tab:tabLabel, section:buildPhotoLabel(catKey, stringsMeta), cat:buildPhotoLabel(catKey, stringsMeta), photos:photos });
   });
   return sections;
 }
@@ -6428,6 +6510,29 @@ function AsBuiltViewer({ wgeUser }) {
     });
   }
 
+  // Sauvegarde directe d'un champ de meta (client, adresse…) sur la ligne principale
+  // de la feuille de contrôle — modifie la vraie donnée source, visible aussi
+  // depuis le Rapport de Chantier lui-même, pas une couche séparée propre à l'AS-Built.
+  var metaSaveTimer = useRef(null);
+  function saveMetaField(field, value) {
+    setData(function(prev) {
+      if (!prev) return prev;
+      return Object.assign({}, prev, { meta: Object.assign({}, prev.meta, { [field]: value }) });
+    });
+    if (metaSaveTimer.current) clearTimeout(metaSaveTimer.current);
+    metaSaveTimer.current = setTimeout(function(){
+      if (!activeId) return;
+      setData(function(prev) {
+        fetch(SUPA_URL+"/rest/v1/feuilles_controle?id=eq."+activeId, {
+          method:"PATCH",
+          headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+          body:JSON.stringify({data:prev, updated_at:new Date().toISOString()})
+        });
+        return prev;
+      });
+    }, 600);
+  }
+
   function TechInfoPanel() {
     var t   = techInfo || TECH_EMPTY;
     var inv = (t.inverters && t.inverters[0]) ? t.inverters[0] : { brand:"", model:"", count:"1", serial:"" };
@@ -6551,17 +6656,18 @@ function AsBuiltViewer({ wgeUser }) {
                       if (!isFirst) imported[target].active = true;
                     }
 
-                    // Onduleurs de cette installation
-                    if (tech.onduleurs) {
-                      tech.onduleurs.forEach(function(o) {
-                        var typeStr = o.type || "";
-                        var dashIdx = typeStr.indexOf(" - ");
-                        var brand   = dashIdx > 0 ? typeStr.substring(0, dashIdx).trim() : "";
-                        var model   = dashIdx > 0 ? typeStr.substring(dashIdx + 3).trim() : typeStr;
-                        var qty     = o.qty || o.count || "1";
-                        allInverters.push({ brand: brand, model: model, count: String(qty), serial: "" });
-                      });
-                    }
+                    // Onduleurs de cette installation (tolère un objet unique au lieu d'un tableau,
+                    // par robustesse face aux variations de format du Briefing)
+                    var ondList = Array.isArray(tech.onduleurs) ? tech.onduleurs
+                      : (tech.onduleurs ? [tech.onduleurs] : (tech.onduleur ? [tech.onduleur] : []));
+                    ondList.forEach(function(o) {
+                      var typeStr = o.type || "";
+                      var dashIdx = typeStr.indexOf(" - ");
+                      var brand   = dashIdx > 0 ? typeStr.substring(0, dashIdx).trim() : "";
+                      var model   = dashIdx > 0 ? typeStr.substring(dashIdx + 3).trim() : typeStr;
+                      var qty     = o.qty || o.count || "1";
+                      allInverters.push({ brand: brand, model: model, count: String(qty), serial: "" });
+                    });
 
                     // Batterie (première installation avec batterie)
                     if (tech.batterie && tech.batterie.inclus === "OUI" && !imported.battery.installed) {
@@ -6644,31 +6750,58 @@ function AsBuiltViewer({ wgeUser }) {
                 </div>
               )}
             </div>
-            {/* Onduleur */}
+            {/* Onduleur(s) */}
             <div>
-              <div style={{ fontWeight:700, fontSize:11, color:"#1B6B3A", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:6 }}>⚡ Onduleur</div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:8 }}>
-                {[["Marque","inverters.0.brand","ex: Fronius"],["Modèle","inverters.0.model","ex: Primo 8.0"],["Quantité","inverters.0.count","ex: 1"],["N° de série","inverters.0.serial","ex: 12345678"]].map(function(f){
-                  var keys = f[1].split(".");
-                  var obj = t.inverters&&t.inverters[parseInt(keys[1])];
-                  var val = obj ? obj[keys[2]]||"" : "";
-                  return (
-                    <div key={f[1]}>
-                      <label style={{ fontSize:10, color:"#555", display:"block", marginBottom:2, fontWeight:600 }}>{f[0]}</label>
-                      <input type="text" value={val} placeholder={f[2]}
-                        onChange={function(e){
-                          var v = e.target.value;
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+                <div style={{ fontWeight:700, fontSize:11, color:"#1B6B3A", textTransform:"uppercase", letterSpacing:"0.06em" }}>⚡ Onduleur(s)</div>
+                <button onClick={function(){
+                    var newT = JSON.parse(JSON.stringify(t||TECH_EMPTY));
+                    if (!Array.isArray(newT.inverters)) newT.inverters = [];
+                    newT.inverters.push({ brand:"", model:"", count:"1", serial:"" });
+                    saveTechInfo(newT);
+                  }}
+                  style={{ fontSize:11, color:"#1B6B3A", background:"#e8f5ee", border:"1px solid #a8d5b5",
+                    borderRadius:6, padding:"4px 10px", fontWeight:600, cursor:"pointer" }}>
+                  + Ajouter un onduleur
+                </button>
+              </div>
+              {(t.inverters && t.inverters.length ? t.inverters : [{ brand:"", model:"", count:"1", serial:"" }]).map(function(invRow, invIdx) {
+                return (
+                  <div key={invIdx} style={{ display:"flex", alignItems:"flex-end", gap:8, marginBottom:8,
+                    paddingBottom:8, borderBottom: invIdx < (t.inverters||[]).length-1 ? "1px dashed #d4ead9" : "none" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))", gap:8, flex:1 }}>
+                      {[["Marque","brand","ex: Fronius"],["Modèle","model","ex: Primo 8.0"],["Quantité","count","ex: 1"],["N° de série","serial","ex: 12345678"]].map(function(f){
+                        var val = invRow[f[1]] || "";
+                        return (
+                          <div key={f[1]}>
+                            {invIdx===0 && <label style={{ fontSize:10, color:"#555", display:"block", marginBottom:2, fontWeight:600 }}>{f[0]}</label>}
+                            <input type="text" value={val} placeholder={f[2]}
+                              onChange={function(e){
+                                var v = e.target.value;
+                                var newT = JSON.parse(JSON.stringify(t||TECH_EMPTY));
+                                if (!Array.isArray(newT.inverters) || !newT.inverters.length) newT.inverters=[{brand:"",model:"",count:"1",serial:""}];
+                                if (!newT.inverters[invIdx]) newT.inverters[invIdx]={brand:"",model:"",count:"1",serial:""};
+                                newT.inverters[invIdx][f[1]] = v;
+                                saveTechInfo(newT);
+                              }}
+                              style={{ width:"100%", padding:"5px 8px", border:"1px solid #d4ead9", borderRadius:6, fontSize:12, boxSizing:"border-box" }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {(t.inverters||[]).length > 1 && (
+                      <button title="Supprimer cet onduleur"
+                        onClick={function(){
                           var newT = JSON.parse(JSON.stringify(t||TECH_EMPTY));
-                          if (!newT.inverters) newT.inverters=[{brand:"",model:"",count:"1",serial:""}];
-                          if (!newT.inverters[0]) newT.inverters[0]={brand:"",model:"",count:"1",serial:""};
-                          newT.inverters[0][keys[2]] = v;
+                          newT.inverters = (newT.inverters||[]).filter(function(_, i){ return i!==invIdx; });
                           saveTechInfo(newT);
                         }}
-                        style={{ width:"100%", padding:"5px 8px", border:"1px solid #d4ead9", borderRadius:6, fontSize:12, boxSizing:"border-box" }} />
-                    </div>
-                  );
-                })}
-              </div>
+                        style={{ background:"#fdecea", color:"#c0392b", border:"1px solid #f5b7b1", borderRadius:6,
+                          width:26, height:26, fontSize:12, cursor:"pointer", flexShrink:0 }}>🗑</button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             {/* Batterie */}
             <div>
@@ -6890,7 +7023,7 @@ function AsBuiltViewer({ wgeUser }) {
 
   // ── Données photos (collectAllSectionPhotos est globale) ────────────────
   var meta    = (data&&data.meta)||{};
-  var dcSecs  = data ? collectAllSectionPhotos(data.dc&&data.dc.photos, DC_SECTIONS, "DC").map(function(s){ return Object.assign({tabColor:DC_COLOR},s); }) : [];
+  var dcSecs  = data ? collectAllSectionPhotos(data.dc&&data.dc.photos, DC_SECTIONS, "DC", data.dc).map(function(s){ return Object.assign({tabColor:DC_COLOR},s); }) : [];
   var acSecs  = data ? collectAllSectionPhotos(data.ac&&data.ac.photos, AC_SECTIONS, "AC").map(function(s){ return Object.assign({tabColor:AC_COLOR},s); }) : [];
   var genPh   = data ? (data.photosGenerales||[]).filter(function(p){ return p&&p.url; }) : [];
   var adminSecDefs = [
@@ -7148,14 +7281,39 @@ function AsBuiltViewer({ wgeUser }) {
               <div style={{ fontSize:18, fontWeight:600, color:"#333", marginBottom:2 }}>{ref}</div>
               {curSheet && <div style={{ fontSize:13, color:"#888", marginBottom:16 }}>{curSheet.label}</div>}
               <table style={{ borderCollapse:"collapse", margin:"0 auto", textAlign:"left" }}>
-                {[["Client", meta.client],["Adresse", meta.adresse],["Date", meta.dateControle],["Project Manager", meta.pm]]
-                  .filter(function(r){ return r[1]; })
-                  .map(function(r){ return (
-                    <tr key={r[0]}>
-                      <td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600 }}>{r[0]}</td>
-                      <td style={{ padding:"4px 0", fontSize:13 }}>{r[1]}</td>
+                {isViewerWGE ? (
+                  <tbody>
+                    <tr>
+                      <td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600, verticalAlign:"middle" }}>Client</td>
+                      <td style={{ padding:"4px 0" }}>
+                        <input type="text" key={activeId+"_client"} defaultValue={meta.client||""} placeholder="Nom du client"
+                          onChange={function(e){ saveMetaField("client", e.target.value); }}
+                          style={{ fontSize:13, padding:"4px 8px", border:"1px solid #d4ead9", borderRadius:6, width:220 }} />
+                      </td>
                     </tr>
-                  );})}
+                    <tr>
+                      <td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600, verticalAlign:"middle" }}>Adresse</td>
+                      <td style={{ padding:"4px 0" }}>
+                        <input type="text" key={activeId+"_adresse"} defaultValue={meta.adresse||""} placeholder="Adresse du chantier"
+                          onChange={function(e){ saveMetaField("adresse", e.target.value); }}
+                          style={{ fontSize:13, padding:"4px 8px", border:"1px solid #d4ead9", borderRadius:6, width:220 }} />
+                      </td>
+                    </tr>
+                    {meta.dateControle && <tr><td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600 }}>Date</td><td style={{ padding:"4px 0", fontSize:13 }}>{meta.dateControle}</td></tr>}
+                    {meta.pm && <tr><td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600 }}>Project Manager</td><td style={{ padding:"4px 0", fontSize:13 }}>{meta.pm}</td></tr>}
+                  </tbody>
+                ) : (
+                  <tbody>
+                    {[["Client", meta.client],["Adresse", meta.adresse],["Date", meta.dateControle],["Project Manager", meta.pm]]
+                      .filter(function(r){ return r[1]; })
+                      .map(function(r){ return (
+                        <tr key={r[0]}>
+                          <td style={{ padding:"4px 14px 4px 0", fontSize:11, color:"#666", fontWeight:600 }}>{r[0]}</td>
+                          <td style={{ padding:"4px 0", fontSize:13 }}>{r[1]}</td>
+                        </tr>
+                      );})}
+                  </tbody>
+                )}
               </table>
             </div>
 
