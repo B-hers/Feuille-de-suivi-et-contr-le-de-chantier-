@@ -2499,8 +2499,23 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
     } else if (briefingData.installations) {
       pvArr = briefingData.installations;
     }
+    // Résolution du nom de chaque MPPT — doit se faire par installation, car un id
+    // de MPPT n'a de sens que dans le contexte de l'installation PV qui le contient.
     var briefingStrings = [];
-    pvArr.forEach(function(inst){ (inst.strings||[]).forEach(function(s){ briefingStrings.push(s); }); });
+    pvArr.forEach(function(inst){
+      var instMppts = inst.mppts || [];
+      function mpptNameFor(mpptId) {
+        for (var k = 0; k < instMppts.length; k++) {
+          if (instMppts[k].id === mpptId) {
+            return (instMppts[k].name && instMppts[k].name.trim()) ? instMppts[k].name.trim() : ("MPPT " + (k+1));
+          }
+        }
+        return "";
+      }
+      (inst.strings||[]).forEach(function(s){
+        briefingStrings.push(Object.assign({}, s, { _mpptName: s.mppt ? mpptNameFor(s.mppt) : "" }));
+      });
+    });
 
     if (briefingStrings.length === 0) { alert("Aucun string trouvé dans le Briefing pour ce chantier."); return; }
 
@@ -2519,7 +2534,7 @@ function DCTab({ data, setData, locked, isWGE, onUnlock }) {
       briefingStrings.forEach(function(s, i) {
         var orientLabel = s.orient === "Libre" ? (s.orientLibre||"") : (s.orient||"");
         var briefName = (s.name && s.name.trim()) ? s.name.trim()
-          : ["Ond. "+(s.onduleur||"?"), orientLabel].filter(Boolean).join(" — ");
+          : [s._mpptName, "Ond. "+(s.onduleur||"?"), orientLabel].filter(Boolean).join(" — ");
         var briefCount    = s.count   || "";
         var briefTension  = s.tension || "";
 
